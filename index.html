@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#07020e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="ui-v2.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -528,75 +529,30 @@
     <!-- 5. VUE LECTEUR VIDÉO (ANIME) -->
         <!-- VUE : LECTEUR VIDÉO FR-ANIME MODERNE -->
     <section id="viewVideoPlayer" class="view-section">
-      <div class="container player-page-container">
-        <!-- Top bar player -->
-        <div class="player-top-meta">
-          <div class="player-titles-row">
-            <h1 class="player-anime-name" id="playerAnimeTitle">Anime</h1>
-            <span class="player-season-badge" id="playerSeasonBadge">Saison 1</span>
-          </div>
-          <div class="player-ep-select-wrap">
-            <label for="playerEpisodeSelect">Épisode</label>
-            <select id="playerEpisodeSelect" class="input-field select-field sm-select">
-              <option value="1">1</option>
-            </select>
-          </div>
-        </div>
+  <div class="container player-page">
+    <div class="player-bar">
+      <button id="btnBackFromPlayer" class="btn-icon" aria-label="Retour">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 class="player-anime-name" id="playerAnimeTitle">Anime</h1>
+    </div>
 
-        <!-- Navigation épisodes / saisons -->
-        <div class="player-nav-controls">
-          <button id="btnPrevSeason" class="btn btn-secondary btn-nav-ctrl">« Saison précédente</button>
-          <button id="btnEpisodesListModal" class="btn btn-primary btn-nav-ctrl list-ep-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span>Liste des épisodes</span>
-          </button>
-          <button id="btnNextEpisode" class="btn btn-secondary btn-nav-ctrl">Épisode suivant »</button>
-        </div>
+    <div id="playerContainer" class="player-viewport"></div>
 
-        <!-- Choix du Lecteur hébergeur -->
-        <div class="host-selector-dropdown-wrap">
-          <select id="playerHostSelect" class="input-field host-select">
-            <option value="SENDVID">Lecteur SENDVID (Officiel / Trailer)</option>
-            <option value="FILEMOON">Lecteur FILEMOON</option>
-            <option value="VIDMOLY">Lecteur VIDMOLY</option>
-            <option value="SIBNET">Lecteur SIBNET</option>
-          </select>
-        </div>
+    <div class="player-meta">
+      <span class="player-sub" id="playerEpisodeSubtitle">Saison 1 • Épisode 1</span>
+      <span class="player-badge" id="playerCurrentBadge">EP 1</span>
+    </div>
 
-        <!-- Écran de lecture vidéo -->
-        <div id="videoContainerFrame" class="video-player-viewport">
-          <iframe id="videoIframe" src="" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-          <video id="html5VideoPlayer" controls playsinline style="display:none; width:100%; height:100%; background:#000;"></video>
-        </div>
+    <div class="player-nav">
+      <button id="btnPrevEpisode" class="btn btn-secondary">← Précédent</button>
+      <button id="btnNextEpisode" class="btn btn-primary">Suivant →</button>
+    </div>
 
-        <!-- Barre d actions sous le lecteur -->
-        <div class="player-actions-bar">
-          <div class="player-actions-left">
-            <button id="btnPlayerAddToList" class="btn btn-secondary btn-sm">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-              <span>Ajouter à la liste</span>
-            </button>
-            <button id="btnPlayerAmbience" class="btn btn-ghost btn-sm" onclick="navigateTo("settings")">Paramètres d ambiance ›</button>
-          </div>
-          <div class="player-lang-toggles">
-            <button class="btn btn-sm btn-lang-toggle active" data-plang="VOSTFR">VOSTFR</button>
-            <button class="btn btn-sm btn-lang-toggle" data-plang="VF">VF</button>
-          </div>
-        </div>
-
-        <!-- Encadré Description -->
-        <div class="player-info-card">
-          <h3 class="card-sec-title">Description</h3>
-          <p id="playerSynopsis" class="player-synopsis-text">Chargement des détails de l œuvre...</p>
-        </div>
-
-        <!-- Encadré Support / Problème -->
-        <div class="player-support-card">
-          <h4 class="support-title">Un problème ?</h4>
-          <p class="support-text">Si vous rencontrez des difficultés ou avez des suggestions, rejoignez notre <a href="https://discord.com" target="_blank" rel="noopener">serveur Discord</a>. Nous sommes là pour vous aider !</p>
-        </div>
-      </div>
-    </section>
+    <h3 class="section-title" style="margin-bottom:10px">Épisodes</h3>
+    <div id="playerEpisodesGrid" class="episodes-grid-large"></div>
+  </div>
+</section>
 
     <!-- 6. VUE LECTEUR MANGA (MANGADEX REEL) -->
     <section id="viewMangaReader" class="view-section">

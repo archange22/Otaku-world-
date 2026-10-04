@@ -263,6 +263,7 @@ function navigateTo(hash) {
   });
 
   state.activeView = route;
+  document.body.classList.toggle("has-player", route === "player" || route === "reader");
   window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (route === "home") {
@@ -866,7 +867,7 @@ async function loadMediaDetail(id, type = "anime") {
         </div>
         <div class="episodes-grid-large" style="margin-top: 14px;">
           ${Array.from({ length: Math.min(totalEps, 24) }, (_, i) => `
-            <a href="#player?id=${media.id}&season=1&ep=${i+1}" class="ep-btn">
+            <a href="#player?id=${media.id}&season=1&ep=${i+1}" class="ep-btn ${epClass(media.id, i+1)}">
               <span>EP ${i + 1 < 10 ? '0' + (i+1) : i+1}</span>
               <span class="ep-btn-sub">Épisode ${i + 1}</span>
             </a>
@@ -952,48 +953,64 @@ async function fetchMangaDexForDetail(title, mediaId) {
 // ==========================================
 // 5. LECTEUR VIDÉO
 // ==========================================
-function startAnimePlayer(mediaId, season = 1, ep = 1) {
+async function startAnimePlayer(mediaId, season = 1, ep = 1) {
   season = parseInt(season);
   ep = parseInt(ep);
+
+  // Arrivée directe (hero, lien partagé) : on charge la fiche si elle manque
+  if (!state.currentMedia || String(state.currentMedia.id) !== String(mediaId)) {
+    const d = await fetchAniList(
+      `query ($id: Int) { Media(id: $id, isAdult: false) {
+        id title { romaji english } coverImage { large } episodes trailer { id site } } }`,
+      { id: parseInt(mediaId) }
+    );
+    if (d?.Media) state.currentMedia = { ...d.Media, type: "anime" };
+  }
   const media = state.currentMedia;
   const title = media?.title?.english || media?.title?.romaji || "Anime";
+  const total = media?.episodes || 12;
 
   document.getElementById("playerAnimeTitle").textContent = title;
-  document.getElementById("playerEpisodeSubtitle").textContent = `Saison ${season} • Épisode ${ep} (${state.currentAnimeLang})`;
+  document.getElementById("playerEpisodeSubtitle").textContent = `Saison ${season} • Épisode ${ep}`;
   document.getElementById("playerCurrentBadge").textContent = `EP ${ep}`;
 
   const prev = document.getElementById("btnPrevEpisode");
   const next = document.getElementById("btnNextEpisode");
-  if (prev) {
-    prev.disabled = ep <= 1;
-    prev.onclick = () => window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${ep - 1}`;
-  }
-  if (next) {
-    next.onclick = () => window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${ep + 1}`;
-  }
+  prev.disabled = ep <= 1;
+  next.disabled = ep >= total;
+  prev.onclick = () => (window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${ep - 1}`);
+  next.onclick = () => (window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${ep + 1}`);
 
+  document.getElementById("playerEpisodesGrid").innerHTML = Array.from({ length: Math.min(total, 100) }, (_, i) => {
+    const n = i + 1;
+    const cls = n === ep ? "current" : epClass(mediaId, n);
+    return `<a href="#player?id=${mediaId}&season=${season}&ep=${n}" class="ep-btn ${cls}">${String(n).padStart(2, "0")}</a>`;
+  }).join("");
+
+  // Source vidéo : uniquement des contenus que tu as le droit de diffuser.
+  // Ici : bande-annonce YouTube officielle (AniList) ou vidéo de démonstration.
   const container = document.getElementById("playerContainer");
-  if (container) {
-    if (media?.trailer?.site === "youtube" && media?.trailer?.id) {
-      container.innerHTML = `<iframe src="https://www.youtube.com/embed/${media.trailer.id}?autoplay=1" allowfullscreen></iframe>`;
-    } else {
-      container.innerHTML = `<video controls autoplay style="width:100%; height:100%; background:#000;"><source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4"></video>`;
-    }
-  }
+  container.innerHTML =
+    media?.trailer?.site === "youtube" && media?.trailer?.id
+      ? `<iframe src="https://www.youtube.com/embed/${media.trailer.id}" allowfullscreen allow="autoplay; picture-in-picture"></iframe>`
+      : `<video controls playsinline><source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4"></video>`;
 
   if (state.currentUser) {
     set(ref(db, `progress/${state.currentUser.uid}/${mediaId}`), {
-      title,
-      cover: media?.coverImage?.large,
-      season,
-      episode: ep,
-      type: "anime",
-      progressPercent: Math.min(100, ep * 10),
-      lastUpdated: Date.now()
+      title, cover: media?.coverImage?.large, season, episode: ep, type: "anime",
+      progressPercent: Math.min(100, Math.round((ep / total) * 100)), lastUpdated: Date.now()
     });
   }
-
   startXpTimer();
+}
+
+// Les cartes utilisent onclick="openMedia(id)" : le module ES ne l'exposait pas.
+window.openMedia = (id) => (window.location.hash = `#detail?id=${id}&type=anime`);
+
+// État d'un épisode pour la grille : "seen" si avant le dernier épisode regardé
+function epClass(mediaId, n) {
+  const last = state.progress?.[mediaId]?.episode || 0;
+  return n < last ? "seen" : n === last ? "current" : "";
 }
 
 // ==========================================

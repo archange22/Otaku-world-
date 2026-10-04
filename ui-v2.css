@@ -1,0 +1,83 @@
+/* Otaku-World UI v2 — à charger APRÈS style.css : <link rel="stylesheet" href="ui-v2.css"> */
+:root{--ow-bg:#05010a;--ow-card:#0e0618;--ow-line:rgba(168,85,247,.14);--ow-glow:0 0 28px rgba(124,58,237,.35)}
+body{background:var(--ow-bg)}
+body.has-player .bottom-nav{display:none!important}
+
+/* Hero : plein écran mobile, texte ancré en bas */
+.hero-banner{min-height:62vh;margin-bottom:1.25rem;background-position:center top}
+.hero-banner::before{background:linear-gradient(180deg,rgba(5,1,10,.15) 0%,rgba(5,1,10,.55) 55%,var(--ow-bg) 100%)}
+.hero-content{padding:0 16px 22px;width:100%}
+.hero-title{font-size:clamp(1.6rem,6vw,2.6rem);letter-spacing:-.02em}
+.hero-actions .btn{flex:1;min-width:140px}
+.btn-primary{box-shadow:var(--ow-glow)}
+
+/* Cartes : couvertures grandes, coins doux, pas de bordure lourde */
+.media-card{flex-basis:132px;background:transparent;border:0;border-radius:12px}
+.media-card-poster{border-radius:12px;border:1px solid var(--ow-line)}
+.media-card:active{transform:scale(.97)}
+.media-card-body{padding:8px 2px}
+.media-card-title{font-weight:600;font-size:.82rem}
+.cards-carousel,.media-row{scrollbar-width:none;margin-right:-16px;padding-right:16px}
+.cards-carousel::-webkit-scrollbar,.media-row::-webkit-scrollbar{display:none}
+.schedule-card{flex:0 0 150px;scroll-snap-align:start;cursor:pointer}
+.schedule-thumb-wrap{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:2/3}
+.schedule-thumb-wrap img{width:100%;height:100%;object-fit:cover}
+.schedule-title{font-size:.82rem;font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedule-sub{font-size:.72rem;color:var(--text-muted)}
+.empty-state-notice{color:var(--text-muted);font-size:.85rem;padding:12px 0}
+
+/* Fiche anime (page dédiée) */
+.detail-backdrop{position:fixed;inset:0 0 auto 0;height:55vh;background-size:cover;background-position:center top;opacity:.35;z-index:0;
+  -webkit-mask-image:linear-gradient(#000 20%,transparent);mask-image:linear-gradient(#000 20%,transparent)}
+.detail-container{position:relative;z-index:1;padding-top:12px}
+.btn-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;color:#fff;font-weight:600}
+.detail-hero{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:end;margin:8px 0 18px}
+.detail-poster{width:120px;border-radius:12px;box-shadow:var(--ow-glow)}
+.detail-title{font-family:var(--font-heading);font-size:1.35rem;line-height:1.2}
+.detail-alt-title{color:var(--text-muted);font-size:.8rem;margin:2px 0 8px}
+.detail-badges{display:flex;flex-wrap:wrap;gap:6px}
+.detail-badge{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(168,85,247,.12);border:1px solid var(--ow-line)}
+.detail-badge.score{color:#fbbf24}
+.detail-actions-row{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.detail-actions-row .btn-primary{flex:1 1 100%}
+.detail-actions-row .btn-secondary{flex:1}
+.btn.active{border-color:var(--accent-glow);color:#e9d5ff}
+.detail-synopsis-box,.detail-episodes-box{margin-bottom:22px}
+.detail-synopsis-box h3,.episodes-header-bar h3{font-family:var(--font-heading);font-size:1.05rem;margin-bottom:8px}
+.detail-synopsis-text{color:var(--text-muted);font-size:.9rem;max-width:70ch;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.episodes-header-bar{display:flex;align-items:center;justify-content:space-between}
+.lang-selector-group{display:flex;gap:6px}
+.lang-pill{padding:6px 14px;border-radius:999px;background:var(--bg-surface);border:1px solid var(--ow-line);color:var(--text-muted);font-weight:700;font-size:.78rem;min-height:36px}
+.lang-pill.active{background:var(--accent-primary);color:#fff;border-color:transparent}
+
+/* Grille d'épisodes : 3 états (non vu / en cours / vu) */
+.episodes-grid-large{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.ep-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:52px;border-radius:12px;background:var(--ow-card);border:1px solid var(--ow-line);font-weight:700;font-size:.85rem}
+.ep-btn-sub{display:none}
+.ep-btn:active{transform:scale(.95)}
+.ep-btn.current{border-color:var(--accent-glow);background:rgba(124,58,237,.22);box-shadow:var(--ow-glow)}
+.ep-btn.seen{color:var(--text-dim);background:transparent}
+.ep-btn.seen::after{content:"✓";font-size:.65rem;color:var(--success)}
+
+/* Page lecteur dédiée */
+.player-page{padding-bottom:calc(var(--bottom-nav-height) + 20px)}
+.player-bar{display:flex;align-items:center;gap:8px;padding:8px 0}
+.player-bar .player-anime-name{font-family:var(--font-heading);font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-viewport{position:relative;width:100vw;margin-left:-16px;aspect-ratio:16/9;background:#000}
+.player-viewport iframe,.player-viewport video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.player-meta{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+.player-sub{font-weight:700}
+.player-badge{background:var(--accent-primary);padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:800}
+.player-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.player-nav .btn[disabled]{opacity:.35}
+
+@media(min-width:768px){
+  .hero-banner{min-height:440px}
+  .detail-hero{grid-template-columns:220px 1fr}
+  .detail-poster{width:220px}
+  .detail-actions-row{grid-column:2}
+  .detail-actions-row .btn-primary{flex:0 0 auto}
+  .player-viewport{width:100%;margin-left:0;border-radius:14px;overflow:hidden}
+  .media-card{flex-basis:160px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
