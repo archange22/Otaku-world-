@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090912">
+  <meta name="description" content="Otaku-World - Plateforme anime, manga, webtoon et comics">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Otaku-World v0.8</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-left">
+    <button id="menuBtn" class="icon-btn" aria-label="Ouvrir le menu">☰</button>
+    <a class="logo" href="#home">OTAKU<span>-WORLD</span></a>
+    <span class="version-chip">v0.8</span>
+  </div>
+  <div class="topbar-right">
+    <button id="profileBtn" class="ghost">👤 Connexion</button>
+  </div>
+</header>
+
+<div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+<aside id="drawer" class="drawer">
+  <div class="drawer-head">
+    <div class="logo">OTAKU<span>-WORLD</span></div>
+    <button id="closeMenu" class="icon-btn" aria-label="Fermer">×</button>
+  </div>
+  <nav class="drawer-nav">
+    <a href="#home">🏠 Accueil</a>
+    <a href="#discover">🔎 Découvrir</a>
+    <a href="#extractsSection">🎬 Extraits & Trailers</a>
+    <a href="#animeSection">🔥 Tendances Anime</a>
+    <a href="#mangaSection">📚 Mangas du moment</a>
+    <a href="#profileSection">👤 Mon profil</a>
+    <a id="dashboardNav" href="#dashboardSection" class="hidden">🛠️ Dashboard Owner</a>
+  </nav>
+  <div class="drawer-footer">
+    <p>Otaku-World v0.8 • Mobile & PWA</p>
+    <small>Mode sûr et respect des APIs</small>
+  </div>
+</aside>
+
+<main id="home">
+  <!-- Hero Section -->
+  <section class="hero">
+    <p class="eyebrow">OTAKU-WORLD v0.8</p>
+    <h1>L'univers Otaku.<br><span>Moderne & Ultra-fluide.</span></h1>
+    <p>Catalogue multi-sources AniList, MangaDex, Open Library & AnimeSamaApi. Conçu pour mobile et Android.</p>
+    <div class="search big-search">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" type="search" placeholder="Rechercher un anime, manga, webtoon..." autocomplete="off">
+      <button id="searchBtn">Rechercher</button>
+    </div>
+  </section>
+
+  <!-- Section Découvrir / Catalogue multi-sources -->
+  <section id="discover" class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">CATALOGUE MULTI-SOURCES</p>
+        <h2>Découvrir & Explorer</h2>
+      </div>
+      <span id="apiStatus" class="status-pill">Prêt</span>
+    </div>
+
+    <!-- Onglets de sources -->
+    <div class="source-tabs">
+      <button class="source-tab active" data-source="anime">🎬 Anime</button>
+      <button class="source-tab" data-source="manga">📚 Manga</button>
+      <button class="source-tab" data-source="webtoon">📱 Webtoon & Manhwa</button>
+      <button class="source-tab" data-source="comics">🦸 Comics & Livres</button>
+    </div>
+
+    <!-- Filtres rapides -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label for="genreFilter">Genre</label>
+        <select id="genreFilter" class="filter-select">
+          <option value="">Tous les genres</option>
+          <option value="Action">Action</option>
+          <option value="Adventure">Aventure</option>
+          <option value="Comedy">Comédie</option>
+          <option value="Drama">Drame</option>
+          <option value="Fantasy">Fantasy</option>
+          <option value="Mystery">Mystère</option>
+          <option value="Romance">Romance</option>
+          <option value="Sci-Fi">Sci-Fi</option>
+          <option value="Supernatural">Surnaturel</option>
+          <option value="Slice of Life">Tranche de vie</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="sortFilter">Trier par</label>
+        <select id="sortFilter" class="filter-select">
+          <option value="TRENDING_DESC">🔥 Tendances</option>
+          <option value="POPULARITY_DESC">⭐ Popularité</option>
+          <option value="SCORE_DESC">🏆 Mieux notés</option>
+          <option value="START_DATE_DESC">🆕 Récents</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="safe-box">
+      🛡️ <b>Mode sûr activé</b>
+      <span>Les contenus adultes sont exclus d'office pour respecter les sources et garantir un espace sain.</span>
+    </div>
+
+    <!-- Grille des résultats -->
+    <div id="searchResults" class="grid"></div>
+    <div id="searchLoader" class="loader-box hidden">
+      <div class="spinner"></div>
+      <p>Chargement des œuvres...</p>
+    </div>
+  </section>
+
+  <!-- Section Profil & Progression -->
+  <section id="profileSection" class="section hidden">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">ESPACE MEMBRE</p>
+        <h2>👤 Mon profil</h2>
+      </div>
+      <button id="logoutBtn" class="ghost small">Déconnexion</button>
+    </div>
+    <div class="profile-card">
+      <div class="avatar-wrap">
+        <img id="avatarImg" class="avatar-img" src="" alt="Avatar">
+        <label class="avatar-upload" title="Changer l'avatar">
+          📷<input id="avatarInput" type="file" accept="image/*">
+        </label>
+      </div>
+      <div class="profile-main">
+        <div class="name-line">
+          <h2 id="username">Utilisateur</h2>
+          <span id="roleBadge" class="role normal">MEMBRE</span>
+        </div>
+        <p id="level">Niveau 1 • 0 XP</p>
+        <div class="progress"><i id="xpBar"></i></div>
+        <small id="nextLevel">100 XP avant le niveau 2</small>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><b id="points">0</b><span>XP Total</span></div>
+      <div class="stat-card"><b id="watchMin">0</b><span>Min. anime</span></div>
+      <div class="stat-card"><b id="readMin">0</b><span>Min. manga</span></div>
+    </div>
+
+    <div class="section-head">
+      <h3>🏅 Badges débloqués</h3>
+    </div>
+    <div id="badges" class="badges"></div>
+  </section>
+
+  <!-- Section Dashboard Owner / Admin -->
+  <section id="dashboardSection" class="section hidden">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">ADMINISTRATION</p>
+        <h2>🛠️ Dashboard</h2>
+      </div>
+      <span id="dashRole" class="role owner">OWNER</span>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-card"><span>👥</span><b id="userCount">0</b><small>Membres inscrits</small></div>
+      <div class="dash-card"><span>⭐</span><b id="totalXp">0</b><small>XP cumulé</small></div>
+      <div class="dash-card"><span>🎬</span><b id="contentCount">0</b><small>Résultats explorés</small></div>
+      <div class="dash-card"><span>🟢</span><b id="firebaseState">OK</b><small>Firebase RTDB</small></div>
+    </div>
+
+    <div class="admin-card">
+      <h3>⚙️ Configuration des sources</h3>
+      <div class="source-health">
+        <span>🟢 AniList API</span>
+        <span>🟢 MangaDex v5</span>
+        <span>🟢 Open Library</span>
+        <span>🔒 Contenu adulte désactivé</span>
+      </div>
+      <label>URL de ton AnimeSamaApi (métadonnées)
+        <input id="animeSamaBase" value="http://127.0.0.1:5000" placeholder="https://ton-api.example">
+      </label>
+      <label>URL de ton backend Otaku-World (Proxy MangaDex)
+        <input id="backendBase" value="" placeholder="http://127.0.0.1:3000">
+      </label>
+      <button id="saveApi" class="primary">Enregistrer sur cet appareil</button>
+      <p class="muted tiny">Nécessaire pour contourner les limitations CORS lors de l'accès aux chapitres MangaDex.</p>
+    </div>
+
+    <div class="admin-card">
+      <h3>📦 Outils & Diagnostics</h3>
+      <div class="tool-row">
+        <button id="refreshUsers" class="ghost">Actualiser stats</button>
+        <button id="testAnimeSama" class="ghost">Tester AnimeSamaApi</button>
+      </div>
+      <p id="adminMsg" class="muted tiny"></p>
+    </div>
+  </section>
+
+  <!-- Section Extraits & Previews autorisées -->
+  <section id="extractsSection" class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">CONTENUS OFFICIELS</p>
+        <h2>🎬 Extraits & Trailers</h2>
+      </div>
+      <span class="muted tiny">Aperçus autorisés</span>
+    </div>
+    <div id="extracts" class="extracts"></div>
+  </section>
+
+  <!-- Section Tendances Rapides -->
+  <section id="animeSection" class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">SÉLECTIONS</p>
+        <h2>🔥 Tendances Anime</h2>
+      </div>
+    </div>
+    <div id="animeGrid" class="grid"></div>
+  </section>
+
+  <!-- Section Mangas du Moment -->
+  <section id="mangaSection" class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">LECTURES</p>
+        <h2>📚 Mangas recommandés</h2>
+      </div>
+    </div>
+    <div id="mangaGrid" class="grid"></div>
+  </section>
+</main>
+
+<!-- Bottom Navigation Bar pour mobile -->
+<nav class="bottom-nav">
+  <a href="#home" class="bottom-nav-item active" data-target="home">
+    <span class="icon">🏠</span>
+    <span>Accueil</span>
+  </a>
+  <a href="#discover" class="bottom-nav-item" data-target="discover">
+    <span class="icon">🔎</span>
+    <span>Explorer</span>
+  </a>
+  <a href="#animeSection" class="bottom-nav-item" data-target="animeSection">
+    <span class="icon">🔥</span>
+    <span>Tendances</span>
+  </a>
+  <a href="#profileSection" class="bottom-nav-item" data-target="profileSection">
+    <span class="icon">👤</span>
+    <span>Profil</span>
+  </a>
+</nav>
+
+<!-- Modale d'authentification -->
+<div id="authModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="close" data-close>×</button>
+    <h2 id="authTitle">Connexion</h2>
+    <input id="email" type="email" placeholder="Email" autocomplete="email">
+    <input id="password" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <button id="authAction" class="primary">Se connecter</button>
+    <button id="switchAuth" class="link">Créer un compte</button>
+    <p id="authMsg" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- Modale Détail Oeuvre -->
+<div id="detailModal" class="modal hidden">
+  <div class="detail-card">
+    <button class="close" data-close>×</button>
+    <div id="detailHero" class="detail-hero"></div>
+    <div class="detail-body">
+      <div class="detail-top">
+        <div>
+          <p class="eyebrow" id="detailType">ANIME</p>
+          <h2 id="detailTitle">Titre de l'anime</h2>
+        </div>
+        <span id="detailScore" class="score">--</span>
+      </div>
+      <p id="detailDesc" class="muted"></p>
+      <div id="detailMeta" class="chips"></div>
+      
+      <!-- Conteneur Trailer Officiel YouTube -->
+      <div id="detailTrailerBox" class="trailer-box hidden">
+        <h4>🎬 Bande-annonce officielle</h4>
+        <div id="trailerContainer" class="video-responsive"></div>
+      </div>
+
+      <!-- Saisons Anime-Sama -->
+      <div id="seasonBox" class="season-box hidden">
+        <h3>📺 Correspondance Anime-Sama</h3>
+        <div id="seasonList"></div>
+      </div>
+
+      <div class="detail-actions">
+        <button id="detailSessionBtn" class="primary">⏱️ Lancer une session (+XP)</button>
+        <button id="detailCloseBtn" class="ghost" data-close>Fermer</button>
+      </div>
+      <p id="detailNote" class="muted tiny"></p>
+    </div>
+  </div>
+</div>
+
+<!-- Modale Session XP -->
+<div id="watchModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="close" data-close>×</button>
+    <p class="eyebrow" id="mediaType">ANIME</p>
+    <h2 id="mediaTitle">Titre</h2>
+    <div class="timer-box">
+      <span class="timer-icon">⏱️</span>
+      <b id="timer">00:00</b>
+    </div>
+    <p class="muted tiny">1 minute passée = 1 XP gagné ! Les points sont automatiquement ajoutés à ton profil à la fermeture.</p>
+    <button class="primary" data-close>Terminer la session</button>
+  </div>
+</div>
+
+<footer>
+  <p>OTAKU-WORLD v0.8 • Propulsé par AniList, MangaDex & Open Library</p>
+  <small>Conçu pour une expérience mobile et Android optimale</small>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

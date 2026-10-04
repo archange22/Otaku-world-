@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'moderator')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+      }
+    },
+    "comments": {
+      "$content": {
+        ".read": true,
+        "$comment": {
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+        }
+      }
+    }
+  }
+}
