@@ -253,7 +253,7 @@ function navigateTo(hash) {
   document.getElementById("filterBottomSheet")?.classList.remove("open");
 
   document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
-  document.querySelectorAll(".nav-link, .bottom-nav-item").forEach(el => {
+  document.querySelectorAll(".nav-link, .bottom-nav-item, .sidebar-link").forEach(el => {
     const target = el.getAttribute("data-nav") || el.getAttribute("data-tab");
     if (target === route || (target && target.startsWith("catalog") && route === "catalog")) {
       el.classList.add("active");
@@ -1325,4 +1325,22 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btnBackFromReader")?.addEventListener("click", () => window.history.back());
 
   navigateTo(window.location.hash);
+});
+
+// Initialisation automatique du système de thèmes au chargement
+if (typeof initThemeSystem === 'function') {
+  initThemeSystem();
+}
+
+// Raccourci clavier '/' pour la recherche
+window.addEventListener('keydown', (e) => {
+  if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+    const searchBar = document.getElementById('topSearchBar');
+    if (searchBar && window.getComputedStyle(searchBar.parentElement).display !== 'none') {
+      searchBar.focus();
+    } else {
+      window.location.hash = '#search';
+    }
+  }
 });

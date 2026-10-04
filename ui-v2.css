@@ -81,3 +81,156 @@ body.has-player .bottom-nav{display:none!important}
   .media-card{flex-basis:160px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+
+/* ========================================================
+   PC SIDEBAR & CLEAN HEADER STYLES (COHÉRENCE THÈME 1 & 2)
+   ======================================================== */
+
+/* Header Allégé */
+.header-desktop-title { font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700; color: var(--text-muted); }
+.header-search-center.desktop-only { flex: 1; max-width: 480px; margin: 0 16px; }
+.search-kbd-hint { background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); border-radius: 4px; padding: 1px 6px; font-size: 0.72rem; color: var(--text-dim); }
+
+/* Sidebar PC */
+.desktop-sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    background: var(--ow-card, #0a0414);
+    border-right: 1px solid var(--ow-line, rgba(168,85,247,0.14));
+    z-index: 60;
+    padding: 16px 12px;
+  }
+
+  /* Décalage du layout PC pour accueillir la sidebar */
+  body:not(.has-player) .app-header {
+    left: 250px;
+    width: calc(100% - 250px);
+  }
+  body:not(.has-player) .app-main {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px 18px;
+    border-bottom: 1px solid var(--ow-line, rgba(168,85,247,0.14));
+    margin-bottom: 12px;
+  }
+  .sidebar-badge-v {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(168,85,247,0.15);
+    color: var(--accent-secondary, #c084fc);
+    border: 1px solid var(--ow-line, rgba(168,85,247,0.2));
+  }
+
+  .sidebar-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+
+  .sidebar-group {
+    margin-bottom: 18px;
+  }
+  .sidebar-group-title {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--text-dim, #71717a);
+    padding: 6px 10px;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: var(--text-muted, #a1a1aa);
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    margin-bottom: 2px;
+  }
+  .sidebar-icon {
+    font-size: 1.1rem;
+    width: 22px;
+    display: inline-flex;
+    justify-content: center;
+  }
+  .sidebar-link:hover {
+    color: #fff;
+    background: rgba(168,85,247,0.12);
+  }
+  .sidebar-link.active {
+    color: #fff;
+    background: linear-gradient(90deg, rgba(124,58,237,0.28) 0%, rgba(124,58,237,0.06) 100%);
+    border-left: 3px solid var(--accent-primary, #9333ea);
+    font-weight: 700;
+  }
+
+  .sidebar-footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--ow-line, rgba(168,85,247,0.14));
+  }
+  .sidebar-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text-muted, #a1a1aa);
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+  }
+}
+
+/* Adaptation pour Thème 2 (Cyan / Modern Slate) */
+[data-theme="theme-2"] .desktop-sidebar {
+  background: #0f1623;
+  border-right-color: #202b3c;
+}
+[data-theme="theme-2"] .sidebar-header,
+[data-theme="theme-2"] .sidebar-footer {
+  border-color: #202b3c;
+}
+[data-theme="theme-2"] .sidebar-link:hover {
+  background: rgba(0, 194, 255, 0.1);
+  color: #f1f5f9;
+}
+[data-theme="theme-2"] .sidebar-link.active {
+  background: linear-gradient(90deg, rgba(0, 194, 255, 0.22) 0%, rgba(0, 194, 255, 0.04) 100%);
+  border-left-color: #00c2ff;
+  color: #38bdf8;
+}
+[data-theme="theme-2"] .sidebar-badge-v {
+  background: rgba(0, 194, 255, 0.12);
+  color: #38bdf8;
+  border-color: rgba(0, 194, 255, 0.25);
+}
