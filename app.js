@@ -1,3 +1,134 @@
+
+// =============================================================================
+// GESTIONNAIRE DE THÈMES (THÈME 1 : FrAnime / THÈME 2 : Anime-Sama)
+// =============================================================================
+
+function initThemeSystem() {
+  const savedTheme = localStorage.getItem('otaku_theme') || 'theme-1';
+  applyTheme(savedTheme);
+
+  const toggleBtn = document.getElementById('themeToggleBtn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const current = document.body.getAttribute('data-theme') || 'theme-1';
+      const nextTheme = current === 'theme-1' ? 'theme-2' : 'theme-1';
+      applyTheme(nextTheme);
+    });
+  }
+
+  const drawerSelect = document.getElementById('drawerThemeSelect');
+  if (drawerSelect) {
+    drawerSelect.value = savedTheme;
+    drawerSelect.addEventListener('change', (e) => {
+      applyTheme(e.target.value);
+    });
+  }
+
+  // Initialisation des accordéons Anime-Sama
+  initAccordions();
+  initFloatingSearchAndScroll();
+}
+
+function applyTheme(themeName) {
+  document.body.setAttribute('data-theme', themeName);
+  localStorage.setItem('otaku_theme', themeName);
+
+  const label = document.getElementById('currentThemeLabel');
+  if (label) {
+    label.textContent = themeName === 'theme-2' ? 'Thème 2 (Anime-Sama)' : 'Thème 1 (FrAnime)';
+  }
+
+  const drawerSelect = document.getElementById('drawerThemeSelect');
+  if (drawerSelect && drawerSelect.value !== themeName) {
+    drawerSelect.value = themeName;
+  }
+}
+
+function initAccordions() {
+  document.querySelectorAll('.as-acc-header').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.as-accordion-card');
+      if (card) {
+        card.classList.toggle('collapsed');
+      }
+    });
+  });
+
+  // Filtres accordéons réactifs
+  const filterInputs = document.querySelectorAll('#theme2AccordionFilters input');
+  filterInputs.forEach(input => {
+    input.addEventListener('change', () => {
+      applyTheme2CatalogFilters();
+    });
+    if (input.type === 'number') {
+      input.addEventListener('input', debounce(() => {
+        applyTheme2CatalogFilters();
+      }, 500));
+    }
+  });
+}
+
+function initFloatingSearchAndScroll() {
+  const floatingInput = document.getElementById('asFloatingSearchInput');
+  if (floatingInput) {
+    floatingInput.addEventListener('input', debounce((e) => {
+      const q = e.target.value.trim();
+      const mainSearch = document.getElementById('headerSearchInput');
+      if (mainSearch) mainSearch.value = q;
+      if (q.length > 1) {
+        navigateTo('search', { query: q });
+      }
+    }, 400));
+  }
+
+  const scrollBtn = document.getElementById('asScrollTopBtn');
+  if (scrollBtn) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        scrollBtn.classList.add('visible');
+      } else {
+        scrollBtn.classList.remove('visible');
+      }
+    });
+    scrollBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+}
+
+function applyTheme2CatalogFilters() {
+  // Récupérer les filtres actifs
+  const checkedTypes = Array.from(document.querySelectorAll('input[name="as_type"]:checked')).map(i => i.value);
+  const checkedLangs = Array.from(document.querySelectorAll('input[name="as_lang"]:checked')).map(i => i.value);
+  const checkedStatus = Array.from(document.querySelectorAll('input[name="as_status"]:checked')).map(i => i.value);
+  const yearMin = document.getElementById('asYearMin')?.value;
+  const yearMax = document.getElementById('asYearMax')?.value;
+  const checkedGenres = Array.from(document.querySelectorAll('input[name="as_genre"]:checked')).map(i => i.value);
+
+  // Appliquer la recherche au catalogue
+  fetchFilteredCatalog({
+    types: checkedTypes,
+    langs: checkedLangs,
+    status: checkedStatus,
+    yearMin: yearMin ? parseInt(yearMin) : null,
+    yearMax: yearMax ? parseInt(yearMax) : null,
+    genres: checkedGenres
+  });
+}
+
+// Fonction utilitaire de debounce
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 import { app, auth, db, storage } from "./firebase.js";
 import {
   signInWithEmailAndPassword,
@@ -177,6 +308,51 @@ window.addEventListener("hashchange", () => navigateTo(window.location.hash));
 // ==========================================
 let allHomeAnimePool = [];
 
+
+async function fetchTodayAiringSchedule() {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+  const endOfDay = startOfDay + 86400;
+
+  const query = `
+    query ($start: Int, $end: Int) {
+      Page(page: 1, perPage: 12) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          id
+          airingAt
+          episode
+          media {
+            id
+            title {
+              romaji
+              english
+            }
+            coverImage {
+              large
+            }
+            averageScore
+            countryOfOrigin
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { start: Math.floor(startOfDay), end: Math.floor(endOfDay) } })
+    });
+    const data = await res.json();
+    return data?.data?.Page?.airingSchedules || [];
+  } catch (err) {
+    console.warn("Échec récupération planning en direct:", err);
+    return [];
+  }
+}
+
+
 async function renderHomeView() {
   // 1. Titre du jour pour le planning
   const days = ["DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"];
@@ -244,7 +420,12 @@ async function renderHomeView() {
   renderLatestEpisodes(latestList);
 
   // 2. Planning du jour avec heures simulées (08h20, 14h15, etc.)
-  renderScheduleCards(trendingList.slice(0, 8));
+  const realAiring = await fetchTodayAiringSchedule();
+    if (realAiring && realAiring.length > 0) {
+      renderScheduleCards(realAiring, true);
+    } else {
+      renderScheduleCards(trendingList.slice(0, 8), false);
+    }
 
   // 3. Top de la semaine avec #1, #2... et nombre de vues
   renderRankedCards("weeklyTopGrid", trendingList.slice(0, 8), "views");
@@ -293,29 +474,43 @@ function renderLatestEpisodes(list) {
   }).join("");
 }
 
-function renderScheduleCards(list) {
+function renderScheduleCards(list, isLiveSchedule = false) {
   const container = document.getElementById("todayScheduleGrid");
   if (!container) return;
+  
+  if (!list || list.length === 0) {
+    container.innerHTML = '<div class="empty-state-notice">Aucune diffusion officielle répertoriée pour aujourd\'hui. Consultez le catalogue complet.</div>';
+    return;
+  }
 
-  const scheduleHours = ["08h20", "08h41", "12h15", "14h30", "17h00", "19h45", "21h10", "22h30"];
   container.innerHTML = list.map((item, idx) => {
-    const title = item.title?.english || item.title?.romaji;
-    const hour = scheduleHours[idx % scheduleHours.length];
-    const score = item.averageScore ? (item.averageScore / 10).toFixed(1) : "8.4";
-    const isVf = idx % 3 === 0;
+    const media = item.media || item;
+    const title = media.title?.english || media.title?.romaji || "Titre inconnu";
+    let hourDisplay = "";
+    let isUnavailable = false;
+
+    if (item.airingAt) {
+      const airDate = new Date(item.airingAt * 1000);
+      hourDisplay = airDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+    } else {
+      hourDisplay = "Horaire à confirmer";
+      isUnavailable = true;
+    }
+
+    const epNumber = item.episode || (media.nextAiringEpisode ? media.nextAiringEpisode.episode : null);
+    const epDisplay = epNumber ? `Épisode ${epNumber}` : 'Épisode à paraître';
+
     return `
-      <div class="media-card" onclick="window.location.hash = '#detail?id=${item.id}&type=anime'">
-        <img class="media-card-poster" src="${item.coverImage?.large}" alt="${title}" loading="lazy">
-        <span class="rank-badge">E${idx + 1}</span>
-        <div class="schedule-time-badge">${hour}</div>
-        <div class="card-stat-overlay">★ ${score}</div>
-        <div class="card-lang-badge ${isVf ? 'vf' : ''}">${isVf ? 'VF' : 'VOSTFR'}</div>
-        <div class="media-card-body">
-          <h4 class="media-card-title">${title}</h4>
-          <div class="media-card-meta">
-            <span>Saison 1</span>
-            <span class="score-tag">★ ${score}</span>
+      <div class="schedule-card" onclick="openMedia(${media.id})">
+        <div class="schedule-thumb-wrap">
+          <img src="${media.coverImage?.large || ''}" alt="${title}" loading="lazy">
+          <div class="schedule-time-badge ${isUnavailable ? 'badge-unavailable' : 'badge-live-schedule'}">
+            ${isUnavailable ? '⏳ ' + hourDisplay : '🟢 ' + hourDisplay}
           </div>
+        </div>
+        <div class="schedule-info">
+          <div class="schedule-title">${title}</div>
+          <div class="schedule-sub">${epDisplay} · <span class="badge-lang badge-vostfr">VOSTFR</span></div>
         </div>
       </div>
     `;
