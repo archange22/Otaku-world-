@@ -63,6 +63,14 @@
       </nav>
 
       <div class="header-right">
+
+        <div class="theme-picker-wrap">
+          <button id="themeToggleBtn" class="btn btn-sm btn-theme-switch" title="Changer de thème">
+            <span class="theme-icon">🎨</span>
+            <span id="currentThemeLabel" class="theme-label">Thème 1</span>
+          </button>
+        </div>
+
         <div id="userHeaderArea" class="user-area">
           <button id="btnLoginTrigger" class="btn btn-outline btn-sm">Connexion</button>
         </div>
@@ -243,6 +251,243 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             <span>Filtres</span>
           </button>
+        </div>
+
+        
+        <!-- THEME 2 : FILTRES ACCORDÉONS ANIME-SAMA -->
+        <div id="theme2AccordionFilters" class="as-accordion-container">
+          <!-- Accordion 1: TYPES -->
+          <div class="as-accordion-card open" data-acc="types">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span>TYPES</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-grid-checks">
+                <label class="as-check-label"><input type="checkbox" name="as_type" value="anime" checked> <span>Anime</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_type" value="scans"> <span>Scans</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_type" value="film"> <span>Film</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_type" value="autres"> <span>Autres</span></label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 2: LANGUES -->
+          <div class="as-accordion-card open" data-acc="langues">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>LANGUES</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-grid-checks">
+                <label class="as-check-label"><input type="checkbox" name="as_lang" value="VOSTFR"> <span>VOSTFR</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_lang" value="VF"> <span>VF</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_lang" value="VASTFR"> <span>VASTFR</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_lang" value="VCN"> <span>VCN</span></label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 3: STATUT -->
+          <div class="as-accordion-card open" data-acc="statut">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span>STATUT</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-grid-checks">
+                <label class="as-check-label"><input type="checkbox" name="as_status" value="RELEASING"> <span>En cours</span></label>
+                <label class="as-check-label"><input type="checkbox" name="as_status" value="FINISHED"> <span>Terminé</span></label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 4: ANNÉE -->
+          <div class="as-accordion-card open" data-acc="annee">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>ANNÉE</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-range-row">
+                <input type="number" id="asYearMin" class="as-range-input" placeholder="De (ex: 1990)" min="1960" max="2030">
+                <span class="as-range-sep">—</span>
+                <input type="number" id="asYearMax" class="as-range-input" placeholder="À (ex: 2026)" min="1960" max="2030">
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 5: ÉPISODES -->
+          <div class="as-accordion-card open" data-acc="episodes">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span>ÉPISODES</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-range-row">
+                <input type="number" id="asEpMin" class="as-range-input" placeholder="Min" min="1">
+                <span class="as-range-sep">—</span>
+                <input type="number" id="asEpMax" class="as-range-input" placeholder="Max" min="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 6: CHAPITRES -->
+          <div class="as-accordion-card open" data-acc="chapitres">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <span>CHAPITRES</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-range-row">
+                <input type="number" id="asChapMin" class="as-range-input" placeholder="Min" min="1">
+                <span class="as-range-sep">—</span>
+                <input type="number" id="asChapMax" class="as-range-input" placeholder="Max" min="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 7: GENRES (Complet Anime-Sama) -->
+          <div class="as-accordion-card open" data-acc="genres">
+            <button class="as-acc-header" type="button">
+              <div class="as-acc-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>GENRES</span>
+              </div>
+              <svg class="as-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="as-acc-content">
+              <div class="as-grid-genres">
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Action"> <span>Action</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Adolescence"> <span>Adolescence</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Aliens / Extra-terrestres"> <span>Aliens / Extra-terrestres</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Amitié"> <span>Amitié</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Amour"> <span>Amour</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Apocalypse"> <span>Apocalypse</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Art"> <span>Art</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Arts martiaux"> <span>Arts martiaux</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Assassinat"> <span>Assassinat</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Autre monde"> <span>Autre monde</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Aventure"> <span>Aventure</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Combats"> <span>Combats</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Comédie"> <span>Comédie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Crime"> <span>Crime</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Cyberpunk"> <span>Cyberpunk</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Danse"> <span>Danse</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Démons"> <span>Démons</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Détective"> <span>Détective</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Donghua"> <span>Donghua</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Dragon"> <span>Dragon</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Drame"> <span>Drame</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Ecchi"> <span>Ecchi</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Ecole"> <span>Ecole</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Elfe"> <span>Elfe</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Enquête"> <span>Enquête</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Famille"> <span>Famille</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Fantastique"> <span>Fantastique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Fantasy"> <span>Fantasy</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Fantômes"> <span>Fantômes</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Futur"> <span>Futur</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Gastronomie"> <span>Gastronomie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Ghibli"> <span>Ghibli</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Guerre"> <span>Guerre</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Harcèlement"> <span>Harcèlement</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Harem"> <span>Harem</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Harem inversé"> <span>Harem inversé</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Histoire"> <span>Histoire</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Historique"> <span>Historique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Homosexualité"> <span>Homosexualité</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Horreur"> <span>Horreur</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Isekai"> <span>Isekai</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Jeunesse"> <span>Jeunesse</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Jeux"> <span>Jeux</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Jeux vidéo"> <span>Jeux vidéo</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Josei"> <span>Josei</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Journalisme"> <span>Journalisme</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Kaï"> <span>Kaï</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="LGBT+"> <span>LGBT+</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Mafia"> <span>Mafia</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Magical girl"> <span>Magical girl</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Magie"> <span>Magie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Maladie"> <span>Maladie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Mariage"> <span>Mariage</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Mature"> <span>Mature</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Mechas"> <span>Mechas</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Médiéval"> <span>Médiéval</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Militaire"> <span>Militaire</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Monde virtuel"> <span>Monde virtuel</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Monstres"> <span>Monstres</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Musique"> <span>Musique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Mystère"> <span>Mystère</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Nekketsu"> <span>Nekketsu</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Ninjas"> <span>Ninjas</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Nostalgie"> <span>Nostalgie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Paranormal"> <span>Paranormal</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Philosophie"> <span>Philosophie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Pirates"> <span>Pirates</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Police"> <span>Police</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Politique"> <span>Politique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Post-apocalyptique"> <span>Post-apocalyptique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Pouvoirs psychiques"> <span>Pouvoirs psychiques</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Préhistoire"> <span>Préhistoire</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Prison"> <span>Prison</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Psychologique"> <span>Psychologique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Quotidien"> <span>Quotidien</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Religion"> <span>Religion</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Réincarnation / Transmigration"> <span>Réincarnation / Transmigration</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Romance"> <span>Romance</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Samouraïs"> <span>Samouraïs</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="School Life"> <span>School Life</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Science-Fantasy"> <span>Science-Fantasy</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Science-fiction"> <span>Science-fiction</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Scientifique"> <span>Scientifique</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Seinen"> <span>Seinen</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Shôjo"> <span>Shôjo</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Shôjo-Ai"> <span>Shôjo-Ai</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Shônen"> <span>Shônen</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Shônen-Ai"> <span>Shônen-Ai</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Slice of Life"> <span>Slice of Life</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Société"> <span>Société</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Sport"> <span>Sport</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Super pouvoirs"> <span>Super pouvoirs</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Super-héros"> <span>Super-héros</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Surnaturel"> <span>Surnaturel</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Survie"> <span>Survie</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Survival game"> <span>Survival game</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Technologies"> <span>Technologies</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Thriller"> <span>Thriller</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Tournois"> <span>Tournois</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Travail"> <span>Travail</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Vampires"> <span>Vampires</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Vengeance"> <span>Vengeance</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Voyage"> <span>Voyage</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Voyage temporel"> <span>Voyage temporel</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Webcomic"> <span>Webcomic</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Yakuza"> <span>Yakuza</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Yaoi"> <span>Yaoi</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Yokai"> <span>Yokai</span></label>
+              <label class="as-check-label"><input type="checkbox" name="as_genre" value="Yuri"> <span>Yuri</span></label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="catalogGrid" class="media-grid"></div>
@@ -615,5 +860,18 @@
   <div id="toastNotification" class="toast"></div>
 
   <script type="module" src="app.js"></script>
+
+  <!-- THEME 2 : BARRE DE RECHERCHE FLOTTANTE EN BAS & BOUTON HAUT -->
+  <div id="asFloatingSearchBar" class="as-floating-search-wrap">
+    <div class="as-floating-search-bar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="asFloatingSearchInput" placeholder="RECHERCHER UN TITRE..." autocomplete="off">
+    </div>
+  </div>
+
+  <button id="asScrollTopBtn" class="as-scroll-top-btn" title="Retour en haut" aria-label="Retour en haut">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+  </button>
+
 </body>
 </html>
