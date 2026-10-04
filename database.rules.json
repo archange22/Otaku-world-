@@ -7,7 +7,7 @@
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'moderator')",
         ".write": "auth != null && auth.uid === $uid",
         "role": {
-          ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'owner'"
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'owner' || (!data.exists() && newData.val() === 'member'))"
         }
       }
     },
