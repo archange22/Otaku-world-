@@ -1,9 +1,10 @@
-import { auth, db, storage } from "./firebase.js";
+import { app, auth, db, storage } from "./firebase.js";
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   ref,
@@ -11,873 +12,1474 @@ import {
   set,
   update,
   remove,
-  increment,
   onValue
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
 import {
-  ref as storageRef,
+  ref as sRef,
   uploadBytes,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 
-// PWA Service Worker Registration
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
-  });
+// ==========================================
+// ÉTAT GLOBAL DE L'APPLICATION
+// ==========================================
+const state = {
+  currentUser: null,
+  userProfile: null,
+  activeView: "home",
+  activeCatalogType: "all",
+  activeFilters: { genre: "", status: "", sort: "POPULARITY_DESC" },
+  currentMedia: null,
+  currentMangaDexId: null,
+  currentChapters: [],
+  currentChapterIndex: 0,
+  currentChapterPages: [],
+  currentMangaPage: 0,
+  mangaReadingMode: "page", // "page" ou "webtoon"
+  currentAnimeSeason: 1,
+  currentAnimeEpisode: 1,
+  currentAnimeLang: "VOSTFR",
+  libraryTab: "continue",
+  favorites: {},
+  history: {},
+  progress: {},
+  watchlist: {},
+  xpTimer: null
+};
+
+// ==========================================
+// NOTIFICATIONS TOAST
+// ==========================================
+function showToast(message) {
+  const toast = document.getElementById("toastNotification");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-const ANILIST_URL = "https://graphql.anilist.co";
+// ==========================================
+// GESTION DU ROUTEUR & DES VUES
+// ==========================================
+function navigateTo(hash) {
+  if (!hash) hash = "#home";
+  const [route, queryString] = hash.replace("#", "").split("?");
+  const params = new URLSearchParams(queryString || "");
 
-const fallbackAnime = [
-  ["Solo Leveling", "2024", "Action • Fantasy", "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=700&q=80", 12],
-  ["Jujutsu Kaisen", "2020", "Action • Surnaturel", "https://images.unsplash.com/photo-1614583224978-f2a7a8b5f2d8?auto=format&fit=crop&w=700&q=80", 24],
-  ["One Piece", "1999", "Aventure • Shōnen", "https://images.unsplash.com/photo-1541562232579-512a21360020?auto=format&fit=crop&w=700&q=80", 1100],
-  ["Demon Slayer", "2019", "Action • Fantasy", "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?auto=format&fit=crop&w=700&q=80", 26]
-];
+  // Fermer le tiroir latéral et les popups
+  document.getElementById("sideDrawer")?.classList.remove("open");
+  document.getElementById("filterBottomSheet")?.classList.remove("open");
 
-const fallbackManga = [
-  ["One Piece Manga", "1997", "Manga • Shōnen", "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=700&q=80", 1120],
-  ["Blue Lock", "2018", "Manga • Sport", "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=700&q=80", 280]
-];
+  // Masquer toutes les vues
+  document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
 
-const extracts = [
-  {
-    title: "Aperçu libre 01",
-    type: "Démo libre",
-    duration: "00:30",
-    img: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1000&q=80",
-    video: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    desc: "Vidéo de démonstration libre de droits. Remplace-la par une bande-annonce officielle autorisée."
-  },
-  {
-    title: "Aperçu libre 02",
-    type: "Démo libre",
-    duration: "00:25",
-    img: "https://images.unsplash.com/photo-1614583224978-f2a7a8b5f2d8?auto=format&fit=crop&w=1000&q=80",
-    video: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    desc: "Vidéo de démonstration sous licence CC0."
+  // Mettre à jour les liens de navigation actifs
+  document.querySelectorAll(".nav-link, .bottom-nav-item").forEach(el => {
+    const target = el.getAttribute("data-nav") || el.getAttribute("data-tab");
+    if (target === route || (target && target.startsWith("catalog") && route === "catalog")) {
+      el.classList.add("active");
+    } else {
+      el.classList.remove("active");
+    }
+  });
+
+  state.activeView = route;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (route === "home") {
+    document.getElementById("viewHome")?.classList.add("active");
+    renderHomeView();
+  } else if (route === "catalog") {
+    document.getElementById("viewCatalog")?.classList.add("active");
+    if (params.get("type")) {
+      state.activeCatalogType = params.get("type");
+      updateCatalogTypeButtons();
+    }
+    loadCatalogMedia();
+  } else if (route === "search") {
+    document.getElementById("viewSearch")?.classList.add("active");
+    const q = params.get("q");
+    if (q) {
+      document.getElementById("globalSearchInput").value = q;
+      performGlobalSearch(q);
+    }
+  } else if (route === "detail") {
+    document.getElementById("viewMediaDetail")?.classList.add("active");
+    const id = params.get("id");
+    const type = params.get("type") || "anime";
+    if (id) loadMediaDetail(id, type);
+  } else if (route === "player") {
+    document.getElementById("viewVideoPlayer")?.classList.add("active");
+    startAnimePlayer(params.get("id"), params.get("season") || 1, params.get("ep") || 1);
+  } else if (route === "reader") {
+    document.getElementById("viewMangaReader")?.classList.add("active");
+    startMangaReader(params.get("id"), params.get("ch") || null);
+  } else if (route === "library") {
+    document.getElementById("viewLibrary")?.classList.add("active");
+    const tab = params.get("tab") || "continue";
+    state.libraryTab = tab;
+    renderLibraryView();
+  } else if (route === "profile") {
+    document.getElementById("viewProfile")?.classList.add("active");
+    renderProfileView();
+  } else if (route === "admin") {
+    document.getElementById("viewAdmin")?.classList.add("active");
+    renderAdminView();
   }
-];
-
-const badges = [
-  ["🌱", "Premier pas", 1],
-  ["⏱️", "10 minutes", 10],
-  ["🔥", "1 heure", 60],
-  ["⭐", "5 heures", 300],
-  ["👑", "Otaku confirmé", 1000]
-];
-
-let signup = false;
-let currentUser = null;
-let profile = null;
-let userFavorites = {};
-let userProgress = {};
-let userHistory = {};
-let sessionStart = 0;
-let sessionType = "anime";
-let currentModalItem = null;
-let loadedResults = 0;
-let currentSource = "anime";
-
-const $ = (s) => document.querySelector(s);
-function escapeHtml(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  }[m]));
 }
 
-function cleanKey(str) {
-  return String(str || "item").replace(/[.#$\[\]/]/g, "_").substring(0, 80);
+window.addEventListener("hashchange", () => navigateTo(window.location.hash));
+
+// ==========================================
+// API ANILIST (GraphQL)
+// ==========================================
+async function fetchAniList(query, variables = {}) {
+  try {
+    const res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: json.dumps({ query, variables }) if False else JSON.stringify({ query, variables })
+    });
+    const data = await res.json();
+    return data?.data || null;
+  } catch (err) {
+    console.error("AniList Error:", err);
+    return null;
+  }
 }
 
-// Navigation mobile & tiroir hamburger
-function setupMenu() {
-  const drawer = $("#drawer");
-  const back = $("#drawerBackdrop");
-  const open = () => { drawer.classList.add("open"); back.classList.remove("hidden"); };
-  const close = () => { drawer.classList.remove("open"); back.classList.add("hidden"); };
-
-  $("#menuBtn").onclick = open;
-  $("#closeMenu").onclick = close;
-  back.onclick = close;
-  document.querySelectorAll("#drawer a").forEach((a) => (a.onclick = close));
-
-  // Bottom nav sync
-  document.querySelectorAll(".bottom-nav-item").forEach((btn) => {
-    btn.onclick = () => {
-      document.querySelectorAll(".bottom-nav-item").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-    };
-  });
+// Requêtes AniList
+const QUERY_HOME_COLLECTIONS = `
+query {
+  trending: Page(page: 1, perPage: 8) {
+    media(sort: TRENDING_DESC, isAdult: false, type: ANIME) {
+      id title { romaji english native } coverImage { large extraLarge } bannerImage
+      description averageScore seasonYear episodes format genres
+    }
+  }
+  latest: Page(page: 1, perPage: 8) {
+    media(sort: START_DATE_DESC, isAdult: false, type: ANIME, status: RELEASING) {
+      id title { romaji english } coverImage { large } format averageScore episodes
+    }
+  }
+  popularAnime: Page(page: 1, perPage: 8) {
+    media(sort: POPULARITY_DESC, isAdult: false, type: ANIME) {
+      id title { romaji english } coverImage { large } format averageScore episodes
+    }
+  }
+  popularManga: Page(page: 1, perPage: 8) {
+    media(sort: POPULARITY_DESC, isAdult: false, type: MANGA) {
+      id title { romaji english } coverImage { large } format averageScore chapters
+    }
+  }
 }
-setupMenu();
+`;
 
-// Grilles de départ
-function renderFallbackCards(list, containerId, type) {
-  $(containerId).innerHTML = list.map((a, i) => `
-    <article class="card fallback-card" data-i="${i}" data-type="${type}">
-      <div class="poster-wrap">
-        <img class="poster" src="${a[3]}" alt="${escapeHtml(a[0])}" loading="lazy">
-        <span class="poster-score">Top</span>
-      </div>
-      <div class="card-body">
-        <h3>${escapeHtml(a[0])}</h3>
-        <div class="meta">${escapeHtml(a[1])} • ${escapeHtml(a[2])}</div>
-      </div>
-    </article>
-  `).join("");
-
-  document.querySelectorAll(`${containerId} .fallback-card`).forEach((c) => {
-    c.onclick = () => {
-      const item = (c.dataset.type === "anime" ? fallbackAnime : fallbackManga)[Number(c.dataset.i)];
-      openBasicDetail({
-        id: "fb_" + cleanKey(item[0]),
-        title: item[0],
-        desc: item[1] + " • " + item[2],
-        cover: item[3],
-        type: c.dataset.type,
-        totalCount: item[4] || 12
-      });
-    };
-  });
+const QUERY_CATALOG = `
+query ($page: Int, $type: MediaType, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String) {
+  Page(page: $page, perPage: 18) {
+    media(type: $type, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false) {
+      id title { romaji english } coverImage { large } bannerImage
+      format averageScore seasonYear status episodes chapters genres
+    }
+  }
 }
-renderFallbackCards(fallbackAnime, "#animeGrid", "anime");
-renderFallbackCards(fallbackManga, "#mangaGrid", "manga");
+`;
 
-// Extraits
-function renderExtracts() {
-  $("#extracts").innerHTML = extracts.map((e, i) => `
-    <article class="extract" data-extract="${i}">
-      <video muted preload="metadata" poster="${e.img}" src="${e.video}"></video>
-      <div class="play-circle">▶</div>
-      <div class="extract-overlay">
-        <div>
-          <h3>${escapeHtml(e.title)}</h3>
-          <span>${escapeHtml(e.type)} • ${escapeHtml(e.duration)}</span>
+const QUERY_DETAIL = `
+query ($id: Int) {
+  Media(id: $id, isAdult: false) {
+    id title { romaji english native }
+    coverImage { extraLarge large } bannerImage
+    description averageScore seasonYear status episodes chapters
+    format genres duration trailer { id site }
+  }
+}
+`;
+
+// ==========================================
+// 1. VUE ACCUEIL
+// ==========================================
+async function renderHomeView() {
+  renderContinueSection();
+  const data = await fetchAniList(QUERY_HOME_COLLECTIONS);
+  if (!data) return;
+
+  // Hero Banner
+  const featured = data.trending?.media?.[0];
+  if (featured) {
+    const banner = document.getElementById("heroBanner");
+    const bannerImg = featured.bannerImage || featured.coverImage.extraLarge;
+    const title = featured.title.english || featured.title.romaji;
+    banner.style.backgroundImage = `url('${bannerImg}')`;
+    banner.innerHTML = `
+      <div class="hero-content">
+        <span class="hero-tag">🔥 N°1 Tendances</span>
+        <h1 class="hero-title">${title}</h1>
+        <p class="hero-desc">${(featured.description || "").replace(/<[^>]*>?/gm, '')}</p>
+        <div class="hero-actions">
+          <a href="#player?id=${featured.id}&season=1&ep=1" class="btn btn-primary btn-lg">▶ Regarder l'épisode 1</a>
+          <a href="#detail?id=${featured.id}&type=anime" class="btn btn-secondary btn-lg">Fiche détaillée</a>
         </div>
       </div>
-    </article>
-  `).join("");
+    `;
+  }
 
-  document.querySelectorAll(".extract").forEach((x) => {
-    x.onclick = () => openExtract(extracts[Number(x.dataset.extract)]);
-  });
-}
-function openExtract(e) {
-  $("#detailHero").innerHTML = `<img src="${e.img}" alt=""><div class="hero-gradient"></div>`;
-  $("#detailTitle").textContent = e.title;
-  $("#detailType").textContent = `${e.type} • ${e.duration}`;
-  $("#detailDesc").textContent = e.desc;
-  $("#detailScore").textContent = "APERÇU";
-  $("#detailMeta").innerHTML = `<span class="chip">Aperçu officiel libre</span><span class="chip">Démo</span>`;
-  $("#detailTrailerBox").classList.add("hidden");
-  $("#seasonBox").classList.add("hidden");
-  $("#progressTrackerBox").classList.add("hidden");
-  $("#detailNote").textContent = "Aucun flux payant ou protégé n'est contourné.";
-  $("#detailSessionBtn").onclick = () => {
-    $("#detailModal").classList.add("hidden");
-    startSession(e.title, "anime");
-  };
-  $("#detailModal").classList.remove("hidden");
-}
-renderExtracts();
+  // Grilles de la page d'accueil
+  renderCardRow("trendingGrid", data.trending?.media || [], "anime");
+  renderCardRow("latestGrid", data.latest?.media || [], "anime");
+  renderCardRow("popularAnimeGrid", data.popularAnime?.media || [], "anime");
+  renderCardRow("popularMangaGrid", data.popularManga?.media || [], "manga");
 
-// AniList GraphQL Search avec filtres
-async function anilistSearch({ keyword = "", type = "ANIME", genre = "", sort = "TRENDING_DESC" }) {
-  const query = `
-    query($search: String, $type: MediaType, $genre: String, $sort: [MediaSort], $adult: Boolean) {
-      Page(perPage: 16) {
-        media(search: $search, type: $type, genre: $genre, sort: $sort, isAdult: $adult) {
-          id
-          title { romaji english native userPreferred }
-          coverImage { large }
-          bannerImage
-          description(asHtml: false)
-          averageScore
-          episodes
-          chapters
-          volumes
-          status
-          seasonYear
-          genres
-          studios(isMain: true) { nodes { name } }
-          trailer { id site thumbnail }
-          isAdult
+  // Webtoons (requête AniList format MANGA + tag Webtoon)
+  const webtoonsData = await fetchAniList(`
+    query {
+      Page(page: 1, perPage: 8) {
+        media(type: MANGA, sort: POPULARITY_DESC, countryOfOrigin: "KR", isAdult: false) {
+          id title { romaji english } coverImage { large } format averageScore
         }
       }
     }
-  `;
-
-  const variables = { type, sort: [sort], adult: false };
-  if (keyword) variables.search = keyword;
-  if (genre) variables.genre = genre;
-
-  const res = await fetch(ANILIST_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query, variables })
-  });
-
-  if (!res.ok) throw new Error("AniList est temporairement indisponible.");
-  const json = await res.json();
-  if (json.errors) throw new Error(json.errors[0]?.message || "Erreur AniList");
-  return (json.data?.Page?.media || []).filter((x) => !x.isAdult);
-}
-
-// Open Library Search pour Comics
-async function openOpenLibrary(keyword) {
-  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(keyword)}&limit=14&fields=key,title,author_name,cover_i,first_publish_year,subject`);
-  if (!r.ok) throw new Error("Open Library indisponible.");
-  const j = await r.json();
-  return (j.docs || []).filter((x) => x.cover_i).map((x) => ({
-    id: "ol_" + cleanKey(x.key || x.title),
-    title: x.title || "Sans titre",
-    cover: `https://covers.openlibrary.org/b/id/${x.cover_i}-L.jpg`,
-    year: x.first_publish_year || "",
-    authors: (x.author_name || []).slice(0, 2).join(", "),
-    subject: (x.subject || []).slice(0, 3).join(" • "),
-    type: "comics"
-  }));
-}
-
-// Correspondance Anime-Sama
-async function animeSamaSearch(title) {
-  const base = (localStorage.getItem("animeSamaBase") || "http://127.0.0.1:5000").replace(/\/$/, "");
-  try {
-    const r = await fetch(`${base}/api/search?q=${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(3000) });
-    if (!r.ok) return [];
-    return await r.json();
-  } catch {
-    return [];
+  `);
+  if (webtoonsData?.Page?.media) {
+    renderCardRow("popularWebtoonGrid", webtoonsData.Page.media, "webtoon");
   }
+
+  // Recommandés pour toi (basé sur l'historique)
+  renderRecommendedSection();
 }
 
-// Rendu des résultats AniList
-function renderAniList(items) {
-  loadedResults = items.length;
-  $("#contentCount").textContent = loadedResults;
+function renderCardRow(containerId, list, defaultType = "anime") {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!list || list.length === 0) {
+    container.innerHTML = `<p class="text-muted" style="padding: 10px;">Aucun titre disponible.</p>`;
+    return;
+  }
+  container.innerHTML = list.map(item => {
+    const title = item.title?.english || item.title?.romaji || "Sans titre";
+    const score = item.averageScore ? `${(item.averageScore / 10).toFixed(1)} ★` : "";
+    const type = item.format === "MANGA" ? "manga" : defaultType;
+    return `
+      <div class="media-card" onclick="window.location.hash = '#detail?id=${item.id}&type=${type}'">
+        <img class="media-card-poster" src="${item.coverImage?.large || item.coverImage?.extraLarge}" alt="${title}" loading="lazy">
+        ${score ? `<span class="media-card-badge">${score}</span>` : ""}
+        <div class="media-card-body">
+          <h4 class="media-card-title">${title}</h4>
+          <div class="media-card-meta">
+            <span>${item.format || type.toUpperCase()}</span>
+            <span>${item.episodes ? `${item.episodes} eps` : (item.chapters ? `${item.chapters} ch` : "")}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
-  if (items.length === 0) {
-    $("#searchResults").innerHTML = `<p class="muted" style="grid-column: 1/-1; text-align: center; padding: 20px;">Aucun contenu trouvé avec ces filtres.</p>`;
+function renderContinueSection() {
+  const sec = document.getElementById("sectionContinue");
+  const container = document.getElementById("continueList");
+  if (!sec || !container) return;
+
+  const entries = Object.entries(state.progress);
+  if (entries.length === 0) {
+    sec.style.display = "none";
+    return;
+  }
+  sec.style.display = "block";
+  container.innerHTML = entries.slice(0, 6).map(([id, p]) => {
+    const isManga = p.type === "manga" || p.chapter != null;
+    const sub = isManga ? `Chapitre ${p.chapter || 1} • Page ${p.page || 1}` : `Saison ${p.season || 1} • EP ${p.episode || 1}`;
+    const percent = p.progressPercent || 25;
+    const resumeLink = isManga ? `#reader?id=${id}&ch=${p.chapter || 1}` : `#player?id=${id}&season=${p.season || 1}&ep=${p.episode || 1}`;
+
+    return `
+      <div class="continue-card">
+        <img class="continue-poster" src="${p.cover || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200'}" alt="${p.title || ''}">
+        <div class="continue-info">
+          <div>
+            <h4 class="continue-title">${p.title || 'En cours'}</h4>
+            <span class="continue-ep">${sub}</span>
+            <div class="continue-progress-bar">
+              <div class="continue-progress-fill" style="width: ${percent}%;"></div>
+            </div>
+          </div>
+          <a href="${resumeLink}" class="btn btn-primary continue-btn">Reprendre ▶</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRecommendedSection() {
+  const sec = document.getElementById("sectionRecommended");
+  const container = document.getElementById("recommendedGrid");
+  if (!sec || !container) return;
+
+  const historyEntries = Object.values(state.history);
+  if (historyEntries.length === 0) {
+    sec.style.display = "none";
+    return;
+  }
+  // Afficher si l'utilisateur a un historique
+  sec.style.display = "block";
+}
+
+// ==========================================
+// 2. VUE CATALOGUE & FILTRES
+// ==========================================
+let catalogPage = 1;
+
+async function loadCatalogMedia(append = false) {
+  const grid = document.getElementById("catalogGrid");
+  if (!grid) return;
+  if (!append) {
+    catalogPage = 1;
+    grid.innerHTML = `<div class="spinner" style="grid-column: 1/-1; margin: 40px auto;"></div>`;
+  }
+
+  let aniListType = "ANIME";
+  if (state.activeCatalogType === "manga" || state.activeCatalogType === "webtoon") {
+    aniListType = "MANGA";
+  }
+
+  const variables = {
+    page: catalogPage,
+    type: state.activeCatalogType === "all" ? undefined : aniListType,
+    sort: [state.activeFilters.sort || "POPULARITY_DESC"],
+    genre: state.activeFilters.genre || undefined,
+    status: state.activeFilters.status || undefined,
+    search: document.getElementById("catalogSearchInput")?.value?.trim() || undefined
+  };
+
+  const data = await fetchAniList(QUERY_CATALOG, variables);
+  const items = data?.Page?.media || [];
+
+  if (!append) grid.innerHTML = "";
+
+  if (items.length === 0 && !append) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>Aucun résultat trouvé</h3><p>Essayez de modifier vos filtres.</p></div>`;
     return;
   }
 
-  $("#searchResults").innerHTML = items.map((a, i) => {
-    const title = a.title.english || a.title.romaji || a.title.userPreferred || "Sans titre";
-    const score = a.averageScore ? `${a.averageScore}%` : "N/A";
-    const meta = a.seasonYear ? `${a.seasonYear} • ${a.episodes ? a.episodes + ' ép.' : (a.chapters ? a.chapters + ' chap.' : '')}` : "Catalogue";
+  const html = items.map(item => {
+    const title = item.title?.english || item.title?.romaji || "Sans titre";
+    const score = item.averageScore ? `${(item.averageScore / 10).toFixed(1)} ★` : "";
+    const type = item.format === "MANGA" ? "manga" : (state.activeCatalogType === "all" ? "anime" : state.activeCatalogType);
     return `
-      <article class="card ani-card" data-i="${i}">
-        <div class="poster-wrap">
-          <img class="poster" src="${a.coverImage?.large || ''}" alt="${escapeHtml(title)}" loading="lazy">
-          <span class="poster-score">${score}</span>
+      <div class="media-card" onclick="window.location.hash = '#detail?id=${item.id}&type=${type}'">
+        <img class="media-card-poster" src="${item.coverImage?.large}" alt="${title}" loading="lazy">
+        ${score ? `<span class="media-card-badge">${score}</span>` : ""}
+        <div class="media-card-body">
+          <h4 class="media-card-title">${title}</h4>
+          <div class="media-card-meta">
+            <span>${item.seasonYear || item.format || ''}</span>
+            <span>${item.episodes ? `${item.episodes} eps` : ''}</span>
+          </div>
         </div>
-        <div class="card-body">
-          <h3>${escapeHtml(title)}</h3>
-          <div class="meta">${meta}</div>
-        </div>
-      </article>
+      </div>
     `;
   }).join("");
 
-  document.querySelectorAll(".ani-card").forEach((c) => {
-    c.onclick = () => openAniListDetail(items[Number(c.dataset.i)]);
-  });
+  grid.insertAdjacentHTML("beforeend", html);
 }
 
-// Fiche détaillée riche AniList
-async function openAniListDetail(a) {
-  const title = a.title.english || a.title.romaji || a.title.userPreferred;
-  const isAnime = Boolean(a.episodes || currentSource === "anime");
-  const mediaId = "al_" + a.id;
-  const maxCount = isAnime ? (a.episodes || 0) : (a.chapters || 0);
-
-  currentModalItem = {
-    id: mediaId,
-    title,
-    cover: a.coverImage?.large || "",
-    type: isAnime ? "anime" : "manga",
-    maxCount,
-    year: a.seasonYear || ""
-  };
-
-  // Ajout automatique à l'historique de consultation
-  addToHistory(currentModalItem);
-
-  $("#detailHero").innerHTML = `
-    <img src="${a.bannerImage || a.coverImage?.large}" alt="${escapeHtml(title)}">
-    <div class="hero-gradient"></div>
-  `;
-  $("#detailTitle").textContent = title;
-  $("#detailType").textContent = `${a.status || 'EN COURS'} • ${a.seasonYear || 'ANNÉE INCONNUE'}`;
-  $("#detailDesc").textContent = a.description ? a.description.replace(/<[^>]*>/g, "") : "Synopsis non renseigné.";
-  $("#detailScore").textContent = a.averageScore ? `${a.averageScore}%` : "N/A";
-
-  // Chips
-  const studio = a.studios?.nodes?.[0]?.name;
-  const chipsHtml = [
-    a.episodes ? `<span class="chip">📺 ${a.episodes} épisodes</span>` : "",
-    a.chapters ? `<span class="chip">📖 ${a.chapters} chapitres</span>` : "",
-    studio ? `<span class="chip">🏢 ${escapeHtml(studio)}</span>` : "",
-    ...(a.genres || []).map((g) => `<span class="chip">${escapeHtml(g)}</span>`)
-  ].filter(Boolean).join("");
-  $("#detailMeta").innerHTML = chipsHtml;
-
-  // Configuration du tracker de progression
-  setupModalTracker(currentModalItem);
-
-  // Configuration du bouton favori
-  updateFavButton(mediaId);
-
-  // Trailer YouTube officiel autorisé
-  if (a.trailer && a.trailer.site === "youtube" && a.trailer.id) {
-    $("#detailTrailerBox").classList.remove("hidden");
-    $("#trailerContainer").innerHTML = `
-      <iframe src="https://www.youtube.com/embed/${a.trailer.id}?rel=0" allowfullscreen loading="lazy" title="Trailer"></iframe>
-    `;
-  } else {
-    $("#detailTrailerBox").classList.add("hidden");
-    $("#trailerContainer").innerHTML = "";
-  }
-
-  // Anime-Sama correspondence
-  $("#seasonBox").classList.remove("hidden");
-  $("#seasonList").innerHTML = `<small class="muted">Recherche des correspondances...</small>`;
-  animeSamaSearch(title).then((results) => {
-    if (results && results.length > 0) {
-      $("#seasonList").innerHTML = results.map((r) => `
-        <div style="padding: 6px 0; border-bottom: 1px solid #1a1a24; font-size: 12px; display: flex; justify-content: space-between;">
-          <b>${escapeHtml(r.title || r.name)}</b>
-          <span class="muted">${escapeHtml(r.type || "Saison")}</span>
-        </div>
-      `).join("");
+function updateCatalogTypeButtons() {
+  document.querySelectorAll(".type-segmented-control .seg-btn").forEach(btn => {
+    if (btn.getAttribute("data-type") === state.activeCatalogType) {
+      btn.classList.add("active");
     } else {
-      $("#seasonList").innerHTML = `<small class="muted">Aucune saison trouvée sur votre instance AnimeSamaApi locale.</small>`;
+      btn.classList.remove("active");
     }
   });
-
-  $("#detailNote").textContent = "Métadonnées issues d'AniList GraphQL. Respect des conditions de diffusion des ayants droit.";
-  $("#detailSessionBtn").onclick = () => {
-    $("#detailModal").classList.add("hidden");
-    startSession(title, isAnime ? "anime" : "manga");
-  };
-
-  $("#detailModal").classList.remove("hidden");
 }
 
-function openBasicDetail(item) {
-  currentModalItem = item;
-  addToHistory(item);
+// ==========================================
+// 3. RECHERCHE GLOBALE INSTANTANÉE
+// ==========================================
+let searchDebounceTimer = null;
 
-  $("#detailHero").innerHTML = `<img src="${item.cover}" alt=""><div class="hero-gradient"></div>`;
-  $("#detailTitle").textContent = item.title;
-  $("#detailType").textContent = item.type.toUpperCase();
-  $("#detailDesc").textContent = item.desc || "";
-  $("#detailScore").textContent = "TOP";
-  $("#detailMeta").innerHTML = `<span class="chip">${escapeHtml(item.type)}</span><span class="chip">Sélection</span>`;
-  $("#detailTrailerBox").classList.add("hidden");
-  $("#seasonBox").classList.add("hidden");
-  
-  setupModalTracker(item);
-  updateFavButton(item.id);
-
-  $("#detailNote").textContent = "Fiche issue du catalogue Otaku-World.";
-  $("#detailSessionBtn").onclick = () => {
-    $("#detailModal").classList.add("hidden");
-    startSession(item.title, item.type);
-  };
-  $("#detailModal").classList.remove("hidden");
-}
-
-// Gestion du Tracker de progression dans la modale
-function setupModalTracker(item) {
-  const box = $("#progressTrackerBox");
-  box.classList.remove("hidden");
-  const isAnime = item.type === "anime";
-  const unit = isAnime ? "Épisodes" : "Chapitres";
-  $("#trackerUnitLabel").textContent = isAnime ? "📺 Épisodes vus" : "📖 Chapitres lus";
-
-  const curr = userProgress[item.id]?.current || 0;
-  const max = item.maxCount || 0;
-
-  renderTrackerUI(curr, max, unit);
-
-  $("#progMinusBtn").onclick = () => changeProgress(item, -1);
-  $("#progPlusBtn").onclick = () => changeProgress(item, 1);
-  $("#progCompleteBtn").onclick = () => changeProgress(item, max ? (max - curr) : 1);
-}
-
-function renderTrackerUI(curr, max, unit) {
-  $("#trackerCounter").textContent = `${curr} / ${max ? max : '?'}`;
-  const pct = max ? Math.min(100, Math.round((curr / max) * 100)) : (curr > 0 ? 50 : 0);
-  $("#trackerBar").style.width = pct + "%";
-}
-
-async function changeProgress(item, delta) {
-  if (!currentUser) {
-    openAuth();
+async function performGlobalSearch(query) {
+  const resultsArea = document.getElementById("searchResultsArea");
+  if (!resultsArea) return;
+  if (!query || query.trim().length < 2) {
+    resultsArea.innerHTML = `
+      <div class="search-placeholder">
+        <span class="placeholder-icon">🔍</span>
+        <p>Tapez au moins 2 caractères pour rechercher.</p>
+      </div>
+    `;
     return;
   }
-  const curr = Math.max(0, (userProgress[item.id]?.current || 0) + delta);
-  const max = item.maxCount || 0;
-  const unit = item.type === "anime" ? "Épisodes" : "Chapitres";
 
-  renderTrackerUI(curr, max, unit);
+  resultsArea.innerHTML = `<div class="spinner" style="margin: 40px auto;"></div>`;
 
-  // Sync Firebase
-  userProgress[item.id] = {
-    id: item.id,
-    title: item.title,
-    cover: item.cover,
-    type: item.type,
-    current: curr,
-    maxCount: max,
-    updatedAt: Date.now()
-  };
-  await set(ref(db, `users/${currentUser.uid}/progress/${item.id}`), userProgress[item.id]);
-  renderLibrary();
+  // Recherche conjointe AniList (Anime & Manga) + MangaDex
+  const data = await fetchAniList(`
+    query ($search: String) {
+      anime: Page(page: 1, perPage: 8) {
+        media(search: $search, type: ANIME, isAdult: false) {
+          id title { romaji english } coverImage { large } averageScore format seasonYear episodes
+        }
+      }
+      manga: Page(page: 1, perPage: 8) {
+        media(search: $search, type: MANGA, isAdult: false) {
+          id title { romaji english } coverImage { large } averageScore format chapters
+        }
+      }
+    }
+  `, { search: query });
+
+  const animes = data?.anime?.media || [];
+  const mangas = data?.manga?.media || [];
+
+  if (animes.length === 0 && mangas.length === 0) {
+    resultsArea.innerHTML = `<div class="empty-state"><h3>Aucun résultat pour "${query}"</h3><p>Vérifiez l'orthographe du titre.</p></div>`;
+    return;
+  }
+
+  let html = "";
+  if (animes.length > 0) {
+    html += `
+      <div class="search-section-block">
+        <h3 class="section-title">📺 Anime (${animes.length})</h3>
+        <div class="media-grid" style="margin-top: 12px;">
+          ${animes.map(i => renderMediaCardHtml(i, "anime")).join("")}
+        </div>
+      </div>
+    `;
+  }
+  if (mangas.length > 0) {
+    html += `
+      <div class="search-section-block" style="margin-top: 24px;">
+        <h3 class="section-title">📖 Manga & Webtoon (${mangas.length})</h3>
+        <div class="media-grid" style="margin-top: 12px;">
+          ${mangas.map(i => renderMediaCardHtml(i, "manga")).join("")}
+        </div>
+      </div>
+    `;
+  }
+  resultsArea.innerHTML = html;
 }
 
-// Gestion des Favoris
-function updateFavButton(mediaId) {
-  const isFav = Boolean(userFavorites[mediaId]);
-  const btn = $("#favBtn");
-  btn.textContent = isFav ? "❤️" : "🤍";
-  btn.classList.toggle("favorited", isFav);
-  btn.title = isFav ? "Retirer des favoris" : "Ajouter aux favoris";
+function renderMediaCardHtml(item, type) {
+  const title = item.title?.english || item.title?.romaji || "Sans titre";
+  const score = item.averageScore ? `${(item.averageScore / 10).toFixed(1)} ★` : "";
+  return `
+    <div class="media-card" onclick="window.location.hash = '#detail?id=${item.id}&type=${type}'">
+      <img class="media-card-poster" src="${item.coverImage?.large}" alt="${title}" loading="lazy">
+      ${score ? `<span class="media-card-badge">${score}</span>` : ""}
+      <div class="media-card-body">
+        <h4 class="media-card-title">${title}</h4>
+        <div class="media-card-meta">
+          <span>${item.format || type.toUpperCase()}</span>
+          <span>${item.episodes ? `${item.episodes} eps` : (item.chapters ? `${item.chapters} ch` : "")}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-  btn.onclick = async () => {
-    if (!currentUser) {
-      openAuth();
+// ==========================================
+// 4. FICHE DÉTAILLÉE (ANIME / MANGA)
+// ==========================================
+async function loadMediaDetail(id, type = "anime") {
+  const container = document.getElementById("mediaDetailContent");
+  const backdrop = document.getElementById("mediaDetailBackdrop");
+  if (!container) return;
+
+  container.innerHTML = `<div class="spinner" style="margin: 60px auto;"></div>`;
+
+  const data = await fetchAniList(QUERY_DETAIL, { id: parseInt(id) });
+  const media = data?.Media;
+  if (!media) {
+    container.innerHTML = `<div class="empty-state"><h3>Fiche introuvable</h3></div>`;
+    return;
+  }
+  state.currentMedia = { ...media, type };
+
+  // Sauvegarder dans l'historique de l'utilisateur
+  recordHistory(media, type);
+
+  // Backdrop
+  const bgImg = media.bannerImage || media.coverImage.extraLarge;
+  if (backdrop) backdrop.style.backgroundImage = `url('${bgImg}')`;
+
+  const title = media.title.english || media.title.romaji;
+  const altTitle = media.title.native || media.title.romaji;
+  const score = media.averageScore ? `${(media.averageScore / 10).toFixed(1)} / 10 ★` : "Non noté";
+  const isFav = !!state.favorites[id];
+  const isWatch = !!state.watchlist[id];
+  const totalEpisodes = media.episodes || 12;
+
+  // Calcul du nombre de saisons approximatif
+  const seasonCount = Math.max(1, Math.min(6, Math.ceil(totalEpisodes / 12)));
+
+  let actionButtons = "";
+  if (type === "anime") {
+    actionButtons = `
+      <a href="#player?id=${media.id}&season=1&ep=1" class="btn btn-primary btn-lg">▶ Regarder l'épisode 1</a>
+    `;
+  } else {
+    actionButtons = `
+      <a href="#reader?id=${media.id}&ch=1" class="btn btn-primary btn-lg">📖 Lire le manga</a>
+    `;
+  }
+
+  actionButtons += `
+    <button id="btnToggleWatchlist" class="btn btn-secondary ${isWatch ? 'active' : ''}">
+      ${isWatch ? '✓ Dans ma liste' : '＋ Ma liste'}
+    </button>
+    <button id="btnToggleFavorite" class="btn btn-secondary ${isFav ? 'active' : ''}">
+      ${isFav ? '❤️ Favori' : '♡ Favori'}
+    </button>
+  `;
+
+  let seasonsHtml = "";
+  if (type === "anime") {
+    seasonsHtml = `
+      <div class="detail-episodes-box">
+        <div class="episodes-header-bar">
+          <h3>Saisons disponibles</h3>
+          <div class="lang-selector-group">
+            <button class="lang-pill active" onclick="setMediaLang('VOSTFR')">VOSTFR</button>
+            <button class="lang-pill" onclick="setMediaLang('VF')">VF</button>
+            <button class="lang-pill" onclick="setMediaLang('VO')">VO</button>
+          </div>
+        </div>
+
+        <div class="season-tabs">
+          ${Array.from({ length: seasonCount }, (_, i) => `
+            <button class="season-tab ${i === 0 ? 'active' : ''}" onclick="switchSeasonTab(${i + 1}, ${totalEpisodes})">
+              Saison ${i + 1}
+            </button>
+          `).join("")}
+        </div>
+
+        <div id="seasonEpisodesGrid" class="episodes-grid-large">
+          ${renderSeasonEpisodes(1, Math.min(totalEpisodes, 12), media.id)}
+        </div>
+      </div>
+    `;
+  } else {
+    seasonsHtml = `
+      <div class="detail-episodes-box">
+        <div class="episodes-header-bar">
+          <h3>Chapitres MangaDex</h3>
+          <span class="section-tag" id="mangaLangTag">🇫🇷 Traduction FR / EN</span>
+        </div>
+        <div id="mangaChaptersDetailList" style="margin-top: 12px;">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    `;
+    // Charger la liste des chapitres MangaDex
+    fetchMangaDexChaptersForDetail(title, media.id);
+  }
+
+  container.innerHTML = `
+    <div class="detail-hero">
+      <img src="${media.coverImage.extraLarge || media.coverImage.large}" class="detail-poster" alt="${title}">
+      <div class="detail-header-info">
+        <h1 class="detail-title">${title}</h1>
+        <p class="detail-alt-title">${altTitle}</p>
+        <div class="detail-badges">
+          <span class="detail-badge score">${score}</span>
+          <span class="detail-badge">${media.seasonYear || ''}</span>
+          <span class="detail-badge">${media.status || ''}</span>
+          <span class="detail-badge">${media.format || type.toUpperCase()}</span>
+          ${(media.genres || []).map(g => `<span class="detail-badge">${g}</span>`).join("")}
+        </div>
+        <div class="detail-actions-row">
+          ${actionButtons}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-synopsis-box">
+      <h3>Synopsis</h3>
+      <p class="detail-synopsis-text">${(media.description || "Aucune description fournie.").replace(/<[^>]*>?/gm, '')}</p>
+    </div>
+
+    ${seasonsHtml}
+
+    <!-- Commentaires synchronisés Firebase -->
+    <div class="detail-synopsis-box">
+      <h3>Commentaires de la communauté</h3>
+      <div id="commentsArea">
+        <div id="commentsList" style="margin-bottom: 16px;"></div>
+        <div class="comment-input-box" style="display: flex; gap: 8px;">
+          <input type="text" id="commentTextInput" class="input-field" placeholder="Donnez votre avis...">
+          <button id="btnSendComment" class="btn btn-primary">Publier</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Attach button events
+  document.getElementById("btnToggleFavorite")?.addEventListener("click", () => toggleFavorite(media, type));
+  document.getElementById("btnToggleWatchlist")?.addEventListener("click", () => toggleWatchlist(media, type));
+  document.getElementById("btnSendComment")?.addEventListener("click", () => postComment(media.id));
+
+  // Load comments
+  loadComments(media.id);
+}
+
+function renderSeasonEpisodes(season, epCount, mediaId) {
+  let html = "";
+  for (let ep = 1; ep <= epCount; ep++) {
+    const isWatched = state.progress[mediaId]?.episode > ep;
+    const isCurrent = state.progress[mediaId]?.episode === ep;
+    const statusDot = isWatched ? `<span class="ep-status-dot"></span>` : "";
+    html += `
+      <a href="#player?id=${mediaId}&season=${season}&ep=${ep}" class="ep-btn ${isCurrent ? 'active' : ''}">
+        ${statusDot}
+        <span>EP ${ep < 10 ? '0' + ep : ep}</span>
+        <span class="ep-btn-sub">Épisode ${ep}</span>
+      </a>
+    `;
+  }
+  return html;
+}
+
+window.switchSeasonTab = function(season, totalEps) {
+  document.querySelectorAll(".season-tab").forEach((tab, i) => {
+    if (i + 1 === season) tab.classList.add("active");
+    else tab.classList.remove("active");
+  });
+  const grid = document.getElementById("seasonEpisodesGrid");
+  if (grid && state.currentMedia) {
+    grid.innerHTML = renderSeasonEpisodes(season, Math.min(totalEps, 12), state.currentMedia.id);
+  }
+};
+
+window.setMediaLang = function(lang) {
+  state.currentAnimeLang = lang;
+  document.querySelectorAll(".lang-selector-group .lang-pill").forEach(p => {
+    if (p.textContent === lang) p.classList.add("active");
+    else p.classList.remove("active");
+  });
+  showToast(`Version ${lang} sélectionnée`);
+};
+
+// ==========================================
+// 5. LECTEUR VIDÉO (ANIME)
+// ==========================================
+function startAnimePlayer(mediaId, season = 1, episode = 1) {
+  const container = document.getElementById("playerContainer");
+  const titleEl = document.getElementById("playerAnimeTitle");
+  const subEl = document.getElementById("playerEpisodeSubtitle");
+  const badgeEl = document.getElementById("playerCurrentBadge");
+  const prevBtn = document.getElementById("btnPrevEpisode");
+  const nextBtn = document.getElementById("btnNextEpisode");
+
+  season = parseInt(season);
+  episode = parseInt(episode);
+
+  const media = state.currentMedia;
+  const title = media?.title?.english || media?.title?.romaji || "Anime";
+  if (titleEl) titleEl.textContent = title;
+  if (subEl) subEl.textContent = `Saison ${season} • Épisode ${episode} (${state.currentAnimeLang})`;
+  if (badgeEl) badgeEl.textContent = `EP ${episode}`;
+
+  // Boutons précédent / suivant
+  if (prevBtn) {
+    prevBtn.disabled = episode <= 1;
+    prevBtn.onclick = () => window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${episode - 1}`;
+  }
+  if (nextBtn) {
+    nextBtn.onclick = () => window.location.hash = `#player?id=${mediaId}&season=${season}&ep=${episode + 1}`;
+  }
+
+  // Intégration du lecteur autorisé (Bande annonce officielle YouTube ou source vidéo de remplacement propre)
+  let videoEmbed = "";
+  if (media?.trailer?.site === "youtube" && media?.trailer?.id) {
+    videoEmbed = `
+      <iframe src="https://www.youtube.com/embed/${media.trailer.id}?autoplay=1&rel=0&modestbranding=1" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen></iframe>
+    `;
+  } else {
+    // Lecteur HTML5 officiel de démonstration autorisé
+    videoEmbed = `
+      <video controls autoplay style="width: 100%; height: 100%; background: #000;">
+        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        Votre navigateur ne supporte pas la balise vidéo.
+      </video>
+    `;
+  }
+  if (container) container.innerHTML = videoEmbed;
+
+  // Enregistrer la progression dans Firebase
+  saveProgress(mediaId, {
+    season,
+    episode,
+    type: "anime",
+    title,
+    cover: media?.coverImage?.large,
+    progressPercent: Math.min(100, Math.round((episode / (media?.episodes || 12)) * 100))
+  });
+
+  // Activer le gain d'XP (1 XP par minute)
+  startActiveXpTimer();
+}
+
+// ==========================================
+// 6. LECTEUR MANGA RÉEL (MANGADEX API)
+// ==========================================
+async function fetchMangaDexChaptersForDetail(title, aniListId) {
+  const container = document.getElementById("mangaChaptersDetailList");
+  if (!container) return;
+
+  try {
+    // 1. Recherche du manga sur MangaDex
+    const searchRes = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=1`);
+    const searchData = await searchRes.json();
+    const manga = searchData?.data?.[0];
+
+    if (!manga) {
+      container.innerHTML = `<p class="text-muted">Aucun chapitre disponible actuellement sur MangaDex.</p>`;
       return;
     }
-    if (isFav) {
-      delete userFavorites[mediaId];
-      await remove(ref(db, `users/${currentUser.uid}/favorites/${mediaId}`));
-    } else {
-      userFavorites[mediaId] = {
-        id: mediaId,
-        title: currentModalItem.title,
-        cover: currentModalItem.cover,
-        type: currentModalItem.type,
-        addedAt: Date.now()
-      };
-      await set(ref(db, `users/${currentUser.uid}/favorites/${mediaId}`), userFavorites[mediaId]);
-    }
-    updateFavButton(mediaId);
-    renderLibrary();
-  };
-}
+    state.currentMangaDexId = manga.id;
 
-// Gestion de l'historique
-async function addToHistory(item) {
-  if (!currentUser || !item || !item.id) return;
-  const histItem = {
-    id: item.id,
-    title: item.title,
-    cover: item.cover,
-    type: item.type,
-    viewedAt: Date.now()
-  };
-  userHistory[item.id] = histItem;
-  try {
-    await set(ref(db, `users/${currentUser.uid}/history/${item.id}`), histItem);
-    renderLibrary();
-  } catch (e) {
-    console.error("Erreur historique:", e);
+    // 2. Récupération des chapitres en français et anglais
+    const feedRes = await fetch(`https://api.mangadex.org/manga/${manga.id}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=asc&limit=100`);
+    const feedData = await feedRes.json();
+    const chapters = feedData?.data || [];
+
+    if (chapters.length === 0) {
+      container.innerHTML = `<p class="text-muted">Aucun chapitre traduit trouvé pour ce manga.</p>`;
+      return;
+    }
+
+    state.currentChapters = chapters;
+
+    container.innerHTML = `
+      <div class="episodes-grid-large">
+        ${chapters.map((ch, idx) => {
+          const num = ch.attributes?.chapter || idx + 1;
+          const lang = ch.attributes?.translatedLanguage === "fr" ? "🇫🇷 FR" : "🇬🇧 EN";
+          return `
+            <a href="#reader?id=${aniListId}&ch=${num}&mdChId=${ch.id}" class="ep-btn">
+              <span>CH ${num}</span>
+              <span class="ep-btn-sub">${lang}</span>
+            </a>
+          `;
+        }).join("")}
+      </div>
+    `;
+  } catch (err) {
+    console.error("MangaDex detail error:", err);
+    container.innerHTML = `<p class="text-muted">Impossible de contacter le serveur MangaDex.</p>`;
   }
 }
 
-$("#clearHistoryBtn").onclick = async () => {
-  if (!currentUser) return;
-  userHistory = {};
-  await remove(ref(db, `users/${currentUser.uid}/history`));
-  renderLibrary();
-};
+async function startMangaReader(mediaId, chapterNum) {
+  const viewport = document.getElementById("mangaViewport");
+  const loader = document.getElementById("mangaPageLoader");
+  const pageContainer = document.getElementById("mangaPageContainer");
+  const titleEl = document.getElementById("readerMangaTitle");
+  const badgeEl = document.getElementById("readerChapterBadge");
+  const selectEl = document.getElementById("readerChapterSelect");
 
-// Rendu de la bibliothèque (Favoris, Progression, Historique)
-function renderLibrary() {
-  // Favoris
-  const favArr = Object.values(userFavorites || {}).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-  $("#favCount").textContent = favArr.length;
-  $("#noFavMsg").classList.toggle("hidden", favArr.length > 0);
-  $("#favoritesList").innerHTML = favArr.map((f) => `
-    <article class="card lib-card" onclick="openFavDetail('${f.id}')">
-      <div class="poster-wrap">
-        <img class="poster" src="${f.cover}" alt="${escapeHtml(f.title)}" loading="lazy">
-        <span class="poster-score">❤️</span>
-      </div>
-      <div class="card-body">
-        <h3>${escapeHtml(f.title)}</h3>
-        <div class="meta">${f.type ? f.type.toUpperCase() : 'FAVORI'}</div>
-      </div>
-    </article>
-  `).join("");
+  if (loader) loader.style.display = "flex";
+  if (pageContainer) pageContainer.innerHTML = "";
 
-  // Progression
-  const progArr = Object.values(userProgress || {}).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  $("#progCount").textContent = progArr.length;
-  $("#noProgMsg").classList.toggle("hidden", progArr.length > 0);
-  $("#progressList").innerHTML = progArr.map((p) => {
-    const isAnime = p.type === "anime";
-    const label = isAnime ? `Épisode ${p.current} / ${p.maxCount || '?'}` : `Chapitre ${p.current} / ${p.maxCount || '?'}`;
-    const pct = p.maxCount ? Math.min(100, Math.round((p.current / p.maxCount) * 100)) : 50;
-    return `
-      <div class="progress-card">
-        <img class="prog-thumb" src="${p.cover}" alt="${escapeHtml(p.title)}">
-        <div class="prog-info">
-          <h4>${escapeHtml(p.title)}</h4>
-          <div class="prog-meta">${label}</div>
-          <div class="progress" style="height: 6px;"><i style="width: ${pct}%;"></i></div>
-        </div>
-        <div class="prog-btns">
-          <button class="prog-btn-sm" onclick="quickProgress('${p.id}', 1); event.stopPropagation();">+1</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  // Historique
-  const histArr = Object.values(userHistory || {}).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
-  $("#histCount").textContent = histArr.length;
-  $("#noHistMsg").classList.toggle("hidden", histArr.length > 0);
-  $("#historyList").innerHTML = histArr.map((h) => {
-    const d = h.viewedAt ? new Date(h.viewedAt).toLocaleDateString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
-    return `
-      <div class="history-item">
-        <img class="hist-thumb" src="${h.cover}" alt="${escapeHtml(h.title)}">
-        <div class="hist-info">
-          <h4>${escapeHtml(h.title)}</h4>
-          <div class="hist-date">${h.type ? h.type.toUpperCase() : ''} • Consulté le ${d}</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-// Expose aux handlers inline
-window.quickProgress = async (id, delta) => {
-  const p = userProgress[id];
-  if (!p || !currentUser) return;
-  p.current = Math.max(0, (p.current || 0) + delta);
-  p.updatedAt = Date.now();
-  await set(ref(db, `users/${currentUser.uid}/progress/${id}`), p);
-  renderLibrary();
-};
-
-window.switchProfileTab = (tabName) => {
-  document.querySelectorAll(".lib-tab").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === tabName);
-  });
-  document.querySelectorAll(".lib-pane").forEach((pane) => {
-    pane.classList.add("hidden");
-  });
-  const activePane = $(`#libContent${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
-  if (activePane) activePane.classList.remove("hidden");
-};
-
-// Onglets de bibliothèque
-document.querySelectorAll(".lib-tab").forEach((tab) => {
-  tab.onclick = () => window.switchProfileTab(tab.dataset.tab);
-});
-
-// Recherche
-async function performSearch() {
-  const keyword = $("#searchInput").value.trim();
-  const genre = $("#genreFilter").value;
-  const sort = $("#sortFilter").value;
-
-  $("#searchLoader").classList.remove("hidden");
-  $("#searchResults").innerHTML = "";
-  $("#apiStatus").textContent = "Chargement…";
+  const title = state.currentMedia?.title?.english || state.currentMedia?.title?.romaji || "Manga";
+  if (titleEl) titleEl.textContent = title;
+  if (badgeEl) badgeEl.textContent = `Chapitre ${chapterNum || 1}`;
 
   try {
-    if (currentSource === "anime") {
-      const items = await anilistSearch({ keyword, type: "ANIME", genre, sort });
-      renderAniList(items);
-      $("#apiStatus").textContent = `${items.length} animés trouvés`;
-    } else if (currentSource === "manga") {
-      const items = await anilistSearch({ keyword, type: "MANGA", genre, sort });
-      renderAniList(items);
-      $("#apiStatus").textContent = `${items.length} mangas trouvés`;
-    } else if (currentSource === "webtoon") {
-      const items = await anilistSearch({ keyword, type: "MANGA", genre, sort });
-      const web = items.filter(
-        (a) => (a.genres || []).some((g) => /webtoon|manhwa/i.test(g)) || /webtoon|manhwa/i.test(a.title.romaji || "")
-      );
-      renderAniList(web);
-      $("#apiStatus").textContent = `${web.length} webtoons/manhwa`;
-    } else {
-      const items = await openOpenLibrary(keyword || "comics");
-      $("#searchResults").innerHTML = items.map((a, i) => `
-        <article class="card comic-card" data-i="${i}">
-          <div class="poster-wrap">
-            <img class="poster" src="${a.cover}" alt="${escapeHtml(a.title)}" loading="lazy">
-            <span class="poster-score">${a.year || "Livre"}</span>
-          </div>
-          <div class="card-body">
-            <h3>${escapeHtml(a.title)}</h3>
-            <div class="meta">${escapeHtml(a.authors || "Auteur")}</div>
-          </div>
-        </article>
-      `).join("");
+    let mangaId = state.currentMangaDexId;
+    if (!mangaId) {
+      const searchRes = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=1`);
+      const searchData = await searchRes.json();
+      mangaId = searchData?.data?.[0]?.id;
+      state.currentMangaDexId = mangaId;
+    }
 
-      document.querySelectorAll(".comic-card").forEach((c) => {
-        c.onclick = () => {
-          const a = items[Number(c.dataset.i)];
-          openBasicDetail({
-            id: a.id,
-            title: a.title,
-            desc: `${a.authors} • ${a.subject}`,
-            cover: a.cover,
-            type: "comics",
-            maxCount: 1
-          });
-        };
-      });
-      $("#apiStatus").textContent = `${items.length} comics trouvés`;
+    if (!mangaId) throw new Error("Manga introuvable sur MangaDex");
+
+    // Trouver le chapitre
+    const feedRes = await fetch(`https://api.mangadex.org/manga/${mangaId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=asc&limit=100`);
+    const feedData = await feedRes.json();
+    const chapters = feedData?.data || [];
+    state.currentChapters = chapters;
+
+    // Remplir le dropdown
+    if (selectEl) {
+      selectEl.innerHTML = chapters.map((c, i) => `
+        <option value="${c.id}" ${c.attributes?.chapter == chapterNum ? 'selected' : ''}>
+          Ch. ${c.attributes?.chapter || i + 1} (${c.attributes?.translatedLanguage?.toUpperCase()})
+        </option>
+      `).join("");
+      selectEl.onchange = (e) => loadMangaChapterPages(e.target.value);
+    }
+
+    const targetChapter = chapters.find(c => c.attributes?.chapter == chapterNum) || chapters[0];
+    if (targetChapter) {
+      await loadMangaChapterPages(targetChapter.id);
     }
   } catch (err) {
-    $("#apiStatus").textContent = "Erreur source";
-    $("#searchResults").innerHTML = `
-      <div style="grid-column: 1/-1; text-align: center; padding: 30px;">
-        <p class="muted">${escapeHtml(err.message || "Erreur de chargement.")}</p>
-        <button id="retrySearch" class="ghost small" style="margin-top: 10px;">Réessayer</button>
+    console.error("MangaDex Reader Error:", err);
+    if (loader) loader.innerHTML = `<p class="text-danger">Erreur de chargement du manga : ${err.message}</p>`;
+  }
+
+  // Activer XP de lecture
+  startActiveXpTimer();
+}
+
+async function loadMangaChapterPages(chapterId) {
+  const loader = document.getElementById("mangaPageLoader");
+  const pageContainer = document.getElementById("mangaPageContainer");
+  const curPageEl = document.getElementById("mangaCurrentPage");
+  const totalPagesEl = document.getElementById("mangaTotalPages");
+
+  if (loader) loader.style.display = "flex";
+  if (pageContainer) pageContainer.innerHTML = "";
+
+  try {
+    const res = await fetch(`https://api.mangadex.org/at-home/server/${chapterId}`);
+    const data = await res.json();
+    const baseUrl = data.baseUrl;
+    const hash = data.chapter.hash;
+    const files = data.chapter.data;
+
+    state.currentChapterPages = files.map(f => `${baseUrl}/data/${hash}/${f}`);
+    state.currentMangaPage = 0;
+
+    if (loader) loader.style.display = "none";
+    if (curPageEl) curPageEl.textContent = "1";
+    if (totalPagesEl) totalPagesEl.textContent = files.length;
+
+    renderMangaPage();
+
+    // Progression Firebase
+    if (state.currentMedia) {
+      saveProgress(state.currentMedia.id, {
+        chapter: 1,
+        page: 1,
+        type: "manga",
+        title: state.currentMedia.title?.english || state.currentMedia.title?.romaji,
+        cover: state.currentMedia.coverImage?.large,
+        progressPercent: Math.round((1 / files.length) * 100)
+      });
+    }
+  } catch (err) {
+    if (loader) loader.innerHTML = `<p class="text-danger">Impossible de récupérer les pages de MangaDex.</p>`;
+  }
+}
+
+function renderMangaPage() {
+  const pageContainer = document.getElementById("mangaPageContainer");
+  const curPageEl = document.getElementById("mangaCurrentPage");
+  if (!pageContainer) return;
+
+  const pages = state.currentChapterPages;
+  if (pages.length === 0) return;
+
+  if (state.mangaReadingMode === "page") {
+    const pageUrl = pages[state.currentMangaPage];
+    pageContainer.innerHTML = `
+      <img src="${pageUrl}" class="manga-page-img" alt="Page ${state.currentMangaPage + 1}">
+    `;
+    if (curPageEl) curPageEl.textContent = state.currentMangaPage + 1;
+  } else {
+    // Mode Webtoon (défilement vertical)
+    pageContainer.innerHTML = pages.map((url, i) => `
+      <img src="${url}" class="manga-page-img" loading="lazy" alt="Page ${i + 1}">
+    `).join("");
+  }
+}
+
+// Navigation pages manga
+document.getElementById("btnMangaPrevPage")?.addEventListener("click", () => {
+  if (state.currentMangaPage > 0) {
+    state.currentMangaPage--;
+    renderMangaPage();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnMangaNextPage")?.addEventListener("click", () => {
+  if (state.currentMangaPage < state.currentChapterPages.length - 1) {
+    state.currentMangaPage++;
+    renderMangaPage();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+
+document.getElementById("btnToggleReaderMode")?.addEventListener("click", () => {
+  state.mangaReadingMode = state.mangaReadingMode === "page" ? "webtoon" : "page";
+  const label = document.getElementById("readerModeLabel");
+  const viewport = document.getElementById("mangaViewport");
+  const controls = document.getElementById("mangaPageControls");
+  if (label) label.textContent = state.mangaReadingMode === "page" ? "Mode Page" : "Mode Webtoon";
+  if (viewport) {
+    viewport.className = `manga-viewport mode-${state.mangaReadingMode}`;
+  }
+  if (controls) {
+    controls.style.display = state.mangaReadingMode === "page" ? "flex" : "none";
+  }
+  renderMangaPage();
+});
+
+// ==========================================
+// 7. MA BIBLIOTHÈQUE
+// ==========================================
+function renderLibraryView() {
+  const grid = document.getElementById("libraryContentGrid");
+  const empty = document.getElementById("libraryEmptyState");
+  if (!grid || !empty) return;
+
+  // Mise à jour des compteurs
+  document.getElementById("countContinue").textContent = Object.keys(state.progress).length;
+  document.getElementById("countFavorites").textContent = Object.keys(state.favorites).length;
+  document.getElementById("countWatchlist").textContent = Object.keys(state.watchlist).length;
+  document.getElementById("countHistory").textContent = Object.keys(state.history).length;
+
+  document.querySelectorAll(".lib-tab").forEach(tab => {
+    if (tab.getAttribute("data-tab") === state.libraryTab) tab.classList.add("active");
+    else tab.classList.remove("active");
+  });
+
+  let items = {};
+  if (state.libraryTab === "continue") items = state.progress;
+  else if (state.libraryTab === "favorites") items = state.favorites;
+  else if (state.libraryTab === "watchlist") items = state.watchlist;
+  else if (state.libraryTab === "history") items = state.history;
+
+  const entries = Object.entries(items);
+  if (entries.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  grid.innerHTML = entries.map(([id, item]) => {
+    const isManga = item.type === "manga";
+    return `
+      <div class="media-card" onclick="window.location.hash = '#detail?id=${id}&type=${isManga ? 'manga' : 'anime'}'">
+        <img class="media-card-poster" src="${item.cover || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200'}" alt="${item.title || ''}">
+        <div class="media-card-body">
+          <h4 class="media-card-title">${item.title || 'Sans titre'}</h4>
+          <div class="media-card-meta">
+            <span>${item.type?.toUpperCase() || 'ANIME'}</span>
+            <span>${item.episode ? `EP ${item.episode}` : ''}</span>
+          </div>
+        </div>
       </div>
     `;
-    const retry = $("#retrySearch");
-    if (retry) retry.onclick = performSearch;
-  } finally {
-    $("#searchLoader").classList.add("hidden");
-  }
+  }).join("");
 }
 
-$("#searchBtn").onclick = performSearch;
-$("#searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") performSearch(); });
-$("#genreFilter").onchange = performSearch;
-$("#sortFilter").onchange = performSearch;
+// ==========================================
+// 8. PROFIL, XP & BADGES
+// ==========================================
+function renderProfileView() {
+  const loggedView = document.getElementById("profileLoggedView");
+  const guestView = document.getElementById("profileGuestView");
 
-document.querySelectorAll(".source-tab").forEach((btn) => {
-  btn.onclick = () => {
-    document.querySelectorAll(".source-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentSource = btn.dataset.source;
-    performSearch();
-  };
-});
-
-// Authentification & Profil Firebase
-function openAuth() { $("#authModal").classList.remove("hidden"); }
-
-function showProfile() {
-  if (!currentUser || !profile) {
-    $("#profileSection").classList.add("hidden");
-    $("#profileBtn").textContent = "👤 Connexion";
+  if (!state.currentUser) {
+    if (loggedView) loggedView.style.display = "none";
+    if (guestView) guestView.style.display = "block";
     return;
   }
-  $("#profileSection").classList.remove("hidden");
-  $("#profileBtn").textContent = "🚪 Déconnexion";
-  $("#username").textContent = profile.username || currentUser.email.split("@")[0];
-  $("#avatarImg").src = profile.photoURL || "data:image/svg+xml;charset=UTF-8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' rx='50' fill='#211a2d'/><text x='50' y='62' text-anchor='middle' font-size='45'>👤</text></svg>");
 
-  const role = profile.role || "member";
-  const labels = {
-    owner: ["OWNER", "owner"],
-    admin: ["ADMIN", "admin"],
-    moderator: ["MODÉRATEUR", "modo"],
-    member: ["MEMBRE", "normal"]
-  };
-  const [label, cls] = labels[role] || labels.member;
-  $("#roleBadge").textContent = label;
-  $("#roleBadge").className = "role " + cls;
+  if (loggedView) loggedView.style.display = "block";
+  if (guestView) guestView.style.display = "none";
 
-  const xp = profile.points || 0;
-  const lvl = Math.floor(xp / 100) + 1;
-  const currentLvlXp = xp % 100;
-
-  $("#points").textContent = xp;
-  $("#watchMin").textContent = profile.watchMin || 0;
-  $("#readMin").textContent = profile.readMin || 0;
-  $("#level").textContent = `Niveau ${lvl} • ${xp} XP`;
-  $("#xpBar").style.width = currentLvlXp + "%";
-  $("#nextLevel").textContent = `${100 - currentLvlXp} XP avant le niveau ${lvl + 1}`;
-
-  $("#badges").innerHTML = badges.map((b) => `
-    <div class="badge" style="opacity: ${xp >= b[2] ? 1 : 0.35}">
-      ${b[0]} <b>${b[1]}</b>
-    </div>
-  `).join("");
-
-  const privileged = ["owner", "admin"].includes(role);
-  $("#dashboardNav").classList.toggle("hidden", !privileged);
-  if (privileged) {
-    $("#backendBase").value = localStorage.getItem("backendBase") || "";
-    $("#dashboardSection").classList.remove("hidden");
-    $("#dashRole").textContent = role.toUpperCase();
-    $("#dashRole").className = "role " + role;
-    loadDashboardStats();
-  } else {
-    $("#dashboardSection").classList.add("hidden");
+  const p = state.userProfile || {};
+  document.getElementById("profileUsername").textContent = p.username || state.currentUser.displayName || "Otaku";
+  document.getElementById("profileEmail").textContent = state.currentUser.email;
+  
+  if (p.avatar) {
+    document.getElementById("profileAvatarImg").src = p.avatar;
   }
 
-  renderLibrary();
-}
+  // Rôle
+  const roleBadge = document.getElementById("profileRoleBadge");
+  if (roleBadge) {
+    const role = (p.role || "member").toLowerCase();
+    roleBadge.textContent = role.toUpperCase();
+    roleBadge.className = `role-badge role-${role}`;
+  }
 
-async function loadProfile(user) {
-  try {
-    const snap = await get(ref(db, "users/" + user.uid));
-    profile = snap.exists() ? snap.val() : null;
-    if (!profile) {
-      profile = {
-        username: user.email.split("@")[0],
-        role: "member",
-        points: 0,
-        watchMin: 0,
-        readMin: 0,
-        photoURL: ""
-      };
-      await set(ref(db, "users/" + user.uid), profile);
-    }
+  // XP & Niveau
+  const xp = p.xp || 0;
+  const level = Math.floor(xp / 100) + 1;
+  const currentLevelXp = xp % 100;
+  document.getElementById("profileLevel").textContent = level;
+  document.getElementById("profileCurrentXp").textContent = currentLevelXp;
+  document.getElementById("profileNextXp").textContent = 100;
+  document.getElementById("profileXpBar").style.width = `${currentLevelXp}%`;
 
-    // Charger les favoris, progression, historique
-    userFavorites = profile.favorites || {};
-    userProgress = profile.progress || {};
-    userHistory = profile.history || {};
+  // Stats
+  document.getElementById("statWatchTime").textContent = `${Math.floor((p.watchMinutes || 0) / 60)} h`;
+  document.getElementById("statReadTime").textContent = `${Math.floor((p.readMinutes || 0) / 60)} h`;
+  document.getElementById("statAnimeDone").textContent = p.animeDone || 0;
+  document.getElementById("statMangaDone").textContent = p.mangaDone || 0;
 
-    showProfile();
-  } catch (e) {
-    console.error("Erreur de profil:", e);
+  // Badges & Paliers
+  const badgesContainer = document.getElementById("badgesContainer");
+  if (badgesContainer) {
+    const badges = [
+      { id: "b1", emoji: "🌱", name: "Premier Pas", desc: "10 min passées", unlocked: (p.watchMinutes || 0) + (p.readMinutes || 0) >= 10 },
+      { id: "b2", emoji: "🥉", name: "Apprenti Otaku", desc: "1 heure passée", unlocked: (p.watchMinutes || 0) + (p.readMinutes || 0) >= 60 },
+      { id: "b3", emoji: "🥈", name: "Otaku Confirmé", desc: "5 heures passées", unlocked: (p.watchMinutes || 0) + (p.readMinutes || 0) >= 300 },
+      { id: "b4", emoji: "🥇", name: "Marathonien", desc: "10 heures passées", unlocked: (p.watchMinutes || 0) + (p.readMinutes || 0) >= 600 },
+      { id: "b5", emoji: "👑", name: "Maître Suprême", desc: "25 heures passées", unlocked: (p.watchMinutes || 0) + (p.readMinutes || 0) >= 1500 }
+    ];
+
+    badgesContainer.innerHTML = badges.map(b => `
+      <div class="badge-item ${b.unlocked ? '' : 'locked'}">
+        <span class="badge-emoji">${b.emoji}</span>
+        <span class="badge-name">${b.name}</span>
+        <span class="badge-desc">${b.desc}</span>
+      </div>
+    `).join("");
   }
 }
 
-async function loadDashboardStats() {
-  try {
-    const snap = await get(ref(db, "users"));
-    const users = snap.val() || {};
-    const vals = Object.values(users);
-    $("#userCount").textContent = vals.length;
-    $("#totalXp").textContent = vals.reduce((n, u) => n + (u.points || 0), 0);
-    $("#firebaseState").textContent = "OK";
-  } catch {
-    $("#firebaseState").textContent = "ERR";
-  }
-}
-
-// Config Dashboard
-$("#saveApi").onclick = () => {
-  $("#adminMsg").textContent = "";
-  localStorage.setItem("animeSamaBase", $("#animeSamaBase").value.trim().replace(/\/$/, ""));
-  localStorage.setItem("backendBase", $("#backendBase").value.trim().replace(/\/$/, ""));
-  $("#adminMsg").textContent = "Configuration enregistrée sur cet appareil !";
-};
-$("#refreshUsers").onclick = loadDashboardStats;
-$("#testAnimeSama").onclick = async () => {
-  try {
-    const x = await animeSamaSearch("Frieren");
-    $("#adminMsg").textContent = `AnimeSamaApi connectée (${x.length} résultats).`;
-  } catch {
-    $("#adminMsg").textContent = "AnimeSamaApi non joignable. Vérifiez l'URL.";
-  }
-};
-
-// Avatar Upload
-$("#avatarInput").onchange = async (e) => {
-  if (!currentUser || !e.target.files[0]) return;
-  const file = e.target.files[0];
+// Upload Avatar Firebase Storage
+document.getElementById("avatarUploadInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || !state.currentUser) return;
   if (file.size > 2 * 1024 * 1024) {
-    alert("Photo trop volumineuse (max 2 Mo).");
+    showToast("L'image ne doit pas dépasser 2 Mo.");
     return;
   }
-  const path = storageRef(storage, `avatars/${currentUser.uid}/profile`);
-  await uploadBytes(path, file);
-  const url = await getDownloadURL(path);
-  await update(ref(db, "users/" + currentUser.uid), { photoURL: url });
-  await loadProfile(currentUser);
-};
 
-// Sessions & XP
-function startSession(title, type) {
-  if (!currentUser) {
-    openAuth();
-    return;
-  }
-  sessionStart = Date.now();
-  sessionType = type;
-  $("#mediaType").textContent = type.toUpperCase();
-  $("#mediaTitle").textContent = title;
-  $("#watchModal").classList.remove("hidden");
-}
-
-async function finishSession() {
-  if (!sessionStart || !currentUser) return;
-  const mins = Math.floor((Date.now() - sessionStart) / 60000);
-  sessionStart = 0;
-  if (mins < 1) return;
-  const updates = { points: increment(mins) };
-  updates[sessionType === "anime" ? "watchMin" : "readMin"] = increment(mins);
-  await update(ref(db, "users/" + currentUser.uid), updates);
-  await loadProfile(currentUser);
-}
-
-// Actions Auth
-$("#profileBtn").onclick = async () => {
-  if (currentUser) await signOut(auth);
-  else openAuth();
-};
-$("#logoutBtn").onclick = async () => signOut(auth);
-
-$("#authAction").onclick = async () => {
-  const email = $("#email").value.trim();
-  const pass = $("#password").value;
-  $("#authMsg").textContent = "";
+  showToast("Téléversement de l'avatar...");
   try {
-    if (signup) await createUserWithEmailAndPassword(auth, email, pass);
-    else await signInWithEmailAndPassword(auth, email, pass);
-    $("#authModal").classList.add("hidden");
-  } catch (e) {
-    $("#authMsg").textContent = e.message;
+    const avatarRef = sRef(storage, `avatars/${state.currentUser.uid}/profile.jpg`);
+    await uploadBytes(avatarRef, file);
+    const url = await getDownloadURL(avatarRef);
+
+    await update(ref(db, `users/${state.currentUser.uid}`), { avatar: url });
+    document.getElementById("profileAvatarImg").src = url;
+    showToast("Photo de profil mise à jour !");
+  } catch (err) {
+    console.error("Storage error:", err);
+    showToast("Erreur lors de l'upload de l'avatar.");
+  }
+});
+
+// Gain automatique d'XP (1 XP par minute)
+function startActiveXpTimer() {
+  if (state.xpTimer) clearInterval(state.xpTimer);
+  state.xpTimer = setInterval(() => {
+    if (!state.currentUser) return;
+    const uid = state.currentUser.uid;
+    const isManga = state.activeView === "reader";
+
+    const userRef = ref(db, `users/${uid}`);
+    get(userRef).then(snapshot => {
+      const current = snapshot.val() || {};
+      const newXp = (current.xp || 0) + 1;
+      const updates = { xp: newXp };
+      if (isManga) updates.readMinutes = (current.readMinutes || 0) + 1;
+      else updates.watchMinutes = (current.watchMinutes || 0) + 1;
+
+      update(userRef, updates);
+    });
+  }, 60000); // 1 minute
+}
+
+// ==========================================
+// 9. DASHBOARD ADMIN / OWNER
+// ==========================================
+async function renderAdminView() {
+  if (!state.currentUser) {
+    window.location.hash = "#home";
+    return;
+  }
+  const role = (state.userProfile?.role || "").toLowerCase();
+  if (!["owner", "admin", "moderator"].includes(role)) {
+    showToast("Accès réservé aux administrateurs.");
+    window.location.hash = "#home";
+    return;
+  }
+
+  const isOwner = role === "owner";
+
+  // Récupérer la liste des utilisateurs depuis Firebase Realtime Database
+  const usersSnap = await get(ref(db, "users"));
+  const users = usersSnap.val() || {};
+  const userEntries = Object.entries(users);
+
+  document.getElementById("admTotalUsers").textContent = userEntries.length;
+  let totalXp = 0;
+  userEntries.forEach(([_, u]) => totalXp += (u.xp || 0));
+  document.getElementById("admTotalXp").textContent = `${totalXp} XP`;
+
+  const tbody = document.getElementById("adminUsersTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = userEntries.map(([uid, u]) => `
+    <tr>
+      <td><strong>${u.username || 'Utilisateur'}</strong></td>
+      <td>${u.email || 'N/A'}</td>
+      <td>Niveau ${Math.floor((u.xp || 0) / 100) + 1}</td>
+      <td><span class="role-badge role-${(u.role || 'member').toLowerCase()}">${(u.role || 'member').toUpperCase()}</span></td>
+      <td>
+        ${isOwner ? `
+          <select onchange="changeUserRole('${uid}', this.value)" class="input-field" style="height: 34px; padding: 0 8px; font-size: 0.8rem;">
+            <option value="member" ${u.role === 'member' ? 'selected' : ''}>Membre</option>
+            <option value="moderator" ${u.role === 'moderator' ? 'selected' : ''}>Modérateur</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+            <option value="owner" ${u.role === 'owner' ? 'selected' : ''}>Owner</option>
+          </select>
+        ` : `<span class="text-muted">Lecture seule</span>`}
+      </td>
+    </tr>
+  `).join("");
+}
+
+window.changeUserRole = async function(targetUid, newRole) {
+  if (state.userProfile?.role !== "owner") {
+    showToast("Seul l'Owner peut modifier les rôles.");
+    return;
+  }
+  try {
+    await update(ref(db, `users/${targetUid}`), { role: newRole });
+    showToast(`Rôle mis à jour : ${newRole.toUpperCase()}`);
+  } catch (err) {
+    showToast("Erreur lors du changement de rôle.");
   }
 };
 
-$("#switchAuth").onclick = () => {
-  signup = !signup;
-  $("#authTitle").textContent = signup ? "Créer un compte" : "Connexion";
-  $("#authAction").textContent = signup ? "Créer le compte" : "Se connecter";
-  $("#switchAuth").textContent = signup ? "J'ai déjà un compte" : "Créer un compte";
-};
-
-// Fermeture des modales
-document.querySelectorAll("[data-close]").forEach((x) => {
-  x.onclick = () => {
-    if (x.closest("#watchModal")) finishSession();
-    x.closest(".modal").classList.add("hidden");
+// ==========================================
+// 10. SYNCHRONISATION FIREBASE (RÈGLES UTILISATEUR)
+// ==========================================
+function recordHistory(media, type) {
+  if (!state.currentUser) return;
+  const uid = state.currentUser.uid;
+  const item = {
+    title: media.title?.english || media.title?.romaji,
+    cover: media.coverImage?.large,
+    type,
+    viewedAt: Date.now()
   };
+  set(ref(db, `history/${uid}/${media.id}`), item);
+}
+
+function saveProgress(id, progData) {
+  if (!state.currentUser) return;
+  const uid = state.currentUser.uid;
+  set(ref(db, `progress/${uid}/${id}`), {
+    ...progData,
+    lastUpdated: Date.now()
+  });
+}
+
+async function toggleFavorite(media, type) {
+  if (!state.currentUser) {
+    openAuthModal();
+    return;
+  }
+  const uid = state.currentUser.uid;
+  const favRef = ref(db, `favorites/${uid}/${media.id}`);
+  if (state.favorites[media.id]) {
+    await remove(favRef);
+    showToast("Retiré des favoris");
+  } else {
+    await set(favRef, {
+      title: media.title?.english || media.title?.romaji,
+      cover: media.coverImage?.large,
+      type,
+      addedAt: Date.now()
+    });
+    showToast("Ajouté aux favoris ❤️");
+  }
+}
+
+async function toggleWatchlist(media, type) {
+  if (!state.currentUser) {
+    openAuthModal();
+    return;
+  }
+  const uid = state.currentUser.uid;
+  const watchRef = ref(db, `watchlist/${uid}/${media.id}`);
+  if (state.watchlist[media.id]) {
+    await remove(watchRef);
+    showToast("Retiré de votre liste");
+  } else {
+    await set(watchRef, {
+      title: media.title?.english || media.title?.romaji,
+      cover: media.coverImage?.large,
+      type,
+      addedAt: Date.now()
+    });
+    showToast("Ajouté à 'À regarder' ✓");
+  }
+}
+
+// Commentaires
+async function postComment(contentId) {
+  if (!state.currentUser) {
+    openAuthModal();
+    return;
+  }
+  const input = document.getElementById("commentTextInput");
+  const text = input?.value?.trim();
+  if (!text) return;
+
+  const commentId = Date.now().toString();
+  const commentData = {
+    uid: state.currentUser.uid,
+    username: state.userProfile?.username || state.currentUser.displayName || "Anonyme",
+    text,
+    createdAt: Date.now()
+  };
+
+  await set(ref(db, `comments/${contentId}/${commentId}`), commentData);
+  input.value = "";
+  showToast("Commentaire publié !");
+}
+
+function loadComments(contentId) {
+  const container = document.getElementById("commentsList");
+  if (!container) return;
+  onValue(ref(db, `comments/${contentId}`), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      container.innerHTML = `<p class="text-dim" style="font-size: 0.85rem;">Soyez le premier à commenter !</p>`;
+      return;
+    }
+    container.innerHTML = Object.values(data).reverse().map(c => `
+      <div style="background: var(--bg-surface-elevated); padding: 10px 14px; border-radius: 8px; margin-bottom: 8px;">
+        <strong style="color: var(--accent-glow); font-size: 0.85rem;">${c.username}</strong>
+        <p style="margin-top: 4px; font-size: 0.9rem;">${c.text}</p>
+      </div>
+    `).join("");
+  });
+}
+
+// ==========================================
+// 11. AUTHENTIFICATION FIREBASE
+// ==========================================
+function openAuthModal() {
+  document.getElementById("authModal")?.classList.add("open");
+}
+
+function closeAuthModal() {
+  document.getElementById("authModal")?.classList.remove("open");
+}
+
+let isAuthRegister = false;
+document.getElementById("tabAuthLogin")?.addEventListener("click", () => {
+  isAuthRegister = false;
+  document.getElementById("tabAuthLogin").classList.add("active");
+  document.getElementById("tabAuthRegister").classList.remove("active");
+  document.getElementById("authUsernameGroup").style.display = "none";
+  document.getElementById("btnSubmitAuth").textContent = "Se connecter";
 });
 
-// Chronomètre de session
-setInterval(() => {
-  if (sessionStart) {
-    const elapsed = Date.now() - sessionStart;
-    $("#timer").textContent = new Date(elapsed).toISOString().substr(14, 5);
-  }
-}, 1000);
+document.getElementById("tabAuthRegister")?.addEventListener("click", () => {
+  isAuthRegister = true;
+  document.getElementById("tabAuthRegister").classList.add("active");
+  document.getElementById("tabAuthLogin").classList.remove("active");
+  document.getElementById("authUsernameGroup").style.display = "block";
+  document.getElementById("btnSubmitAuth").textContent = "Créer mon compte";
+});
 
-onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  if (user) await loadProfile(user);
-  else {
-    profile = null;
-    userFavorites = {};
-    userProgress = {};
-    userHistory = {};
-    showProfile();
+document.getElementById("authForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("authEmailInput").value;
+  const password = document.getElementById("authPasswordInput").value;
+  const username = document.getElementById("authUsernameInput")?.value;
+  const errorEl = document.getElementById("authErrorMessage");
+  errorEl.style.display = "none";
+
+  try {
+    if (isAuthRegister) {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      // Créer le profil dans Realtime Database
+      const uid = cred.user.uid;
+      const initialProfile = {
+        username: username || email.split("@")[0],
+        email,
+        role: "member",
+        xp: 0,
+        watchMinutes: 0,
+        readMinutes: 0,
+        createdAt: Date.now()
+      };
+      await set(ref(db, `users/${uid}`), initialProfile);
+      showToast("Compte créé avec succès ! Bienvenue sur Otaku-World.");
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+      showToast("Connexion réussie !");
+    }
+    closeAuthModal();
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.style.display = "block";
   }
 });
 
-// Recherche initiale
-performSearch();
+document.getElementById("btnLogout")?.addEventListener("click", () => signOut(auth));
+document.getElementById("btnLoginTrigger")?.addEventListener("click", openAuthModal);
+document.getElementById("btnOpenAuthFromProfile")?.addEventListener("click", openAuthModal);
+document.getElementById("btnCloseAuthModal")?.addEventListener("click", closeAuthModal);
+document.getElementById("authModalBackdrop")?.addEventListener("click", closeAuthModal);
+
+// Observer Auth State
+onAuthStateChanged(auth, (user) => {
+  state.currentUser = user;
+  const userArea = document.getElementById("userHeaderArea");
+  const drawerCard = document.getElementById("drawerUserCard");
+  const adminLink = document.getElementById("adminDrawerLink");
+
+  if (user) {
+    // Écouter le profil Realtime DB
+    onValue(ref(db, `users/${user.uid}`), (snapshot) => {
+      state.userProfile = snapshot.val() || {};
+      const role = (state.userProfile.role || "member").toLowerCase();
+      if (adminLink) {
+        adminLink.style.display = ["owner", "admin", "moderator"].includes(role) ? "block" : "none";
+      }
+      if (userArea) {
+        userArea.innerHTML = `
+          <a href="#profile" class="btn btn-secondary btn-sm" style="display: flex; gap: 6px; align-items: center;">
+            <img src="${state.userProfile.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user.uid}" style="width: 22px; height: 22px; border-radius: 50%;">
+            <span>${state.userProfile.username || 'Mon profil'}</span>
+          </a>
+        `;
+      }
+      if (drawerCard) {
+        drawerCard.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-surface-elevated); border-radius: 12px;">
+            <img src="${state.userProfile.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user.uid}" style="width: 44px; height: 44px; border-radius: 50%;">
+            <div>
+              <strong>${state.userProfile.username || 'Otaku'}</strong>
+              <div style="font-size: 0.75rem; color: var(--accent-glow);">Niveau ${Math.floor((state.userProfile.xp || 0) / 100) + 1} • ${(state.userProfile.role || 'membre').toUpperCase()}</div>
+            </div>
+          </div>
+        `;
+      }
+      if (state.activeView === "profile") renderProfileView();
+    });
+
+    // Écouter les données utilisateur (favoris, historique, progression, watchlist)
+    onValue(ref(db, `favorites/${user.uid}`), s => { state.favorites = s.val() || {}; if (state.activeView === "library") renderLibraryView(); });
+    onValue(ref(db, `history/${user.uid}`), s => { state.history = s.val() || {}; if (state.activeView === "library") renderLibraryView(); });
+    onValue(ref(db, `progress/${user.uid}`), s => { state.progress = s.val() || {}; renderContinueSection(); if (state.activeView === "library") renderLibraryView(); });
+    onValue(ref(db, `watchlist/${user.uid}`), s => { state.watchlist = s.val() || {}; if (state.activeView === "library") renderLibraryView(); });
+
+  } else {
+    state.userProfile = null;
+    state.favorites = {};
+    state.history = {};
+    state.progress = {};
+    state.watchlist = {};
+    if (adminLink) adminLink.style.display = "none";
+    if (userArea) {
+      userArea.innerHTML = `<button id="btnLoginTrigger2" class="btn btn-outline btn-sm">Connexion</button>`;
+      document.getElementById("btnLoginTrigger2")?.addEventListener("click", openAuthModal);
+    }
+    if (drawerCard) {
+      drawerCard.innerHTML = `
+        <button id="btnOpenAuthFromDrawer" class="btn btn-primary btn-full">Connexion / Inscription</button>
+      `;
+      document.getElementById("btnOpenAuthFromDrawer")?.addEventListener("click", openAuthModal);
+    }
+  }
+});
+
+// ==========================================
+// 12. INITIALISATION & LISTENERS
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  // Drawer mobile
+  document.getElementById("btnDrawerOpen")?.addEventListener("click", () => document.getElementById("sideDrawer")?.classList.add("open"));
+  document.getElementById("btnDrawerClose")?.addEventListener("click", () => document.getElementById("sideDrawer")?.classList.remove("open"));
+  document.getElementById("drawerOverlay")?.addEventListener("click", () => document.getElementById("sideDrawer")?.classList.remove("open"));
+
+  // Bottom Sheet Filtres
+  document.getElementById("btnOpenFilterSheet")?.addEventListener("click", () => document.getElementById("filterBottomSheet")?.classList.add("open"));
+  document.getElementById("btnCloseFilterSheet")?.addEventListener("click", () => document.getElementById("filterBottomSheet")?.classList.remove("open"));
+  document.getElementById("filterSheetOverlay")?.addEventListener("click", () => document.getElementById("filterBottomSheet")?.classList.remove("open"));
+
+  // Appliquer filtres
+  document.getElementById("btnApplyFilters")?.addEventListener("click", () => {
+    state.activeFilters.genre = document.getElementById("filterGenre").value;
+    state.activeFilters.status = document.getElementById("filterStatus").value;
+    state.activeFilters.sort = document.getElementById("filterSort").value;
+    document.getElementById("filterBottomSheet")?.classList.remove("open");
+    loadCatalogMedia();
+  });
+
+  // Onglets Catalogue Type
+  document.querySelectorAll(".type-segmented-control .seg-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.activeCatalogType = btn.getAttribute("data-type");
+      updateCatalogTypeButtons();
+      loadCatalogMedia();
+    });
+  });
+
+  // Recherche dans le catalogue
+  document.getElementById("catalogSearchInput")?.addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => loadCatalogMedia(), 400);
+  });
+
+  // Recherche globale
+  document.getElementById("globalSearchInput")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    document.getElementById("btnClearSearch").style.display = val ? "block" : "none";
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => performGlobalSearch(val), 400);
+  });
+
+  document.getElementById("btnClearSearch")?.addEventListener("click", () => {
+    const input = document.getElementById("globalSearchInput");
+    if (input) input.value = "";
+    document.getElementById("btnClearSearch").style.display = "none";
+    performGlobalSearch("");
+  });
+
+  // Raccourci Ctrl+K / Trigger
+  document.getElementById("btnHeaderSearch")?.addEventListener("click", () => {
+    window.location.hash = "#search";
+    setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 200);
+  });
+  window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      window.location.hash = "#search";
+      setTimeout(() => document.getElementById("globalSearchInput")?.focus(), 200);
+    }
+  });
+
+  // Boutons Retour
+  document.getElementById("btnBackFromDetail")?.addEventListener("click", () => window.history.back());
+  document.getElementById("btnBackFromPlayer")?.addEventListener("click", () => window.history.back());
+  document.getElementById("btnBackFromReader")?.addEventListener("click", () => window.history.back());
+
+  // Onglets Bibliothèque
+  document.querySelectorAll(".lib-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      state.libraryTab = tab.getAttribute("data-tab");
+      renderLibraryView();
+    });
+  });
+
+  // Charger plus de titres dans le catalogue
+  document.getElementById("btnLoadMoreCatalog")?.addEventListener("click", () => {
+    catalogPage++;
+    loadCatalogMedia(true);
+  });
+
+  // Initialiser la première vue
+  navigateTo(window.location.hash);
+});
+
+// Enregistrement Service Worker PWA
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
