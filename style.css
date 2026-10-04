@@ -1,4 +1,4 @@
-/* Otaku-World v0.8 - Style Sombre Violet & Mobile-First */
+/* Otaku-World v0.9 - Style Sombre Violet, Mobile-First & Bibliothèque Cloud */
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
@@ -7,7 +7,7 @@ body {
   color: #f5f5f7;
   font-family: Inter, system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  padding-bottom: 70px; /* Space for mobile bottom nav */
+  padding-bottom: 70px;
 }
 
 /* Topbar */
@@ -66,7 +66,7 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
-.ghost.small { font-size: 12px; padding: 6px 10px; }
+.ghost.small { font-size: 12px; padding: 6px 12px; }
 .primary {
   background: #9b6cff;
   color: #fff;
@@ -77,6 +77,7 @@ body {
   cursor: pointer;
   transition: background 0.2s;
 }
+.primary.small { padding: 7px 14px; font-size: 12px; }
 .primary:hover { background: #8855f5; }
 .link {
   background: none;
@@ -452,14 +453,107 @@ body {
 }
 .stat-card b { display: block; font-size: 20px; color: #fff; }
 .stat-card span { font-size: 11px; color: #888; margin-top: 2px; }
-.badges { display: flex; flex-wrap: wrap; gap: 8px; }
-.badge {
-  background: #141420;
-  border: 1px solid #2a2a3c;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 12px;
+
+/* Library Tabs (v0.9) */
+.library-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 18px 0 16px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
 }
+.library-tabs::-webkit-scrollbar { display: none; }
+.lib-tab {
+  white-space: nowrap;
+  background: #12121e;
+  color: #aaa;
+  border: 1px solid #242436;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lib-tab.active {
+  background: #9b6cff;
+  color: #fff;
+  border-color: #9b6cff;
+}
+.empty-msg {
+  text-align: center;
+  padding: 30px 16px;
+  font-size: 13px;
+}
+
+/* Progress Tracker Item in Profile */
+.progress-list, .history-list {
+  display: grid;
+  gap: 10px;
+}
+.progress-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #11111a;
+  border: 1px solid #222232;
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.prog-thumb {
+  width: 50px;
+  height: 65px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #161622;
+  flex: none;
+}
+.prog-info { flex: 1; min-width: 0; }
+.prog-info h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prog-meta { font-size: 11px; color: #888; margin-bottom: 6px; }
+.prog-btns { display: flex; gap: 6px; flex: none; }
+.prog-btn-sm {
+  background: #1a1a28;
+  border: 1px solid #2e2e42;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.prog-btn-sm:hover { background: #9b6cff; }
+
+/* History item */
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #11111a;
+  border: 1px solid #20202e;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.hist-thumb {
+  width: 44px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #161622;
+  flex: none;
+}
+.hist-info { flex: 1; min-width: 0; }
+.hist-info h4 { margin: 0 0 3px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-date { font-size: 10px; color: #777; }
+.history-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 
 /* Roles */
 .role {
@@ -652,6 +746,29 @@ body {
   gap: 12px;
   align-items: flex-start;
 }
+.detail-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fav-toggle-btn {
+  background: #1c1c2b;
+  border: 1px solid #333348;
+  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+.fav-toggle-btn:active { transform: scale(0.9); }
+.fav-toggle-btn.favorited {
+  background: #3e1b34;
+  border-color: #ff4b72;
+}
+
 .detail-body h2 {
   font-size: 24px;
   margin: 4px 0 10px;
@@ -680,6 +797,29 @@ body {
   font-size: 11px;
   color: #ddd;
 }
+
+/* Tracker Box in Modal (v0.9) */
+.tracker-box {
+  background: #0b0b14;
+  border: 1px solid #232338;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 14px 0;
+}
+.tracker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.tracker-label { color: #a879ff; font-weight: 700; }
+.tracker-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .trailer-box {
   margin: 18px 0;
   background: #0c0c14;
@@ -765,6 +905,14 @@ body {
 .bottom-nav-item.active { color: #a879ff; }
 
 /* Helpers & Responsive */
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge {
+  background: #141420;
+  border: 1px solid #2a2a3c;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+}
 .muted { color: #9494a8; }
 .tiny { font-size: 11px; line-height: 1.5; }
 footer {

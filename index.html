@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090912">
-  <meta name="description" content="Otaku-World - Plateforme anime, manga, webtoon et comics">
+  <meta name="description" content="Otaku-World - Plateforme anime, manga, webtoon et comics avec suivi">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Otaku-World v0.8</title>
+  <title>Otaku-World v0.9</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,7 +16,7 @@
   <div class="topbar-left">
     <button id="menuBtn" class="icon-btn" aria-label="Ouvrir le menu">☰</button>
     <a class="logo" href="#home">OTAKU<span>-WORLD</span></a>
-    <span class="version-chip">v0.8</span>
+    <span class="version-chip">v0.9</span>
   </div>
   <div class="topbar-right">
     <button id="profileBtn" class="ghost">👤 Connexion</button>
@@ -31,25 +31,26 @@
   </div>
   <nav class="drawer-nav">
     <a href="#home">🏠 Accueil</a>
-    <a href="#discover">🔎 Découvrir</a>
+    <a href="#discover">🔎 Découvrir & Filtres</a>
+    <a href="#profileSection" onclick="switchProfileTab('favorites')">❤️ Mes Favoris</a>
+    <a href="#profileSection" onclick="switchProfileTab('progress')">📊 Suivi Progression</a>
+    <a href="#profileSection" onclick="switchProfileTab('history')">🕒 Mon Historique</a>
     <a href="#extractsSection">🎬 Extraits & Trailers</a>
-    <a href="#animeSection">🔥 Tendances Anime</a>
-    <a href="#mangaSection">📚 Mangas du moment</a>
-    <a href="#profileSection">👤 Mon profil</a>
+    <a href="#profileSection" onclick="switchProfileTab('profile')">👤 Mon profil</a>
     <a id="dashboardNav" href="#dashboardSection" class="hidden">🛠️ Dashboard Owner</a>
   </nav>
   <div class="drawer-footer">
-    <p>Otaku-World v0.8 • Mobile & PWA</p>
-    <small>Mode sûr et respect des APIs</small>
+    <p>Otaku-World v0.9 • Synchronisation Firebase</p>
+    <small>Suivi personnel & cloud</small>
   </div>
 </aside>
 
 <main id="home">
   <!-- Hero Section -->
   <section class="hero">
-    <p class="eyebrow">OTAKU-WORLD v0.8</p>
-    <h1>L'univers Otaku.<br><span>Moderne & Ultra-fluide.</span></h1>
-    <p>Catalogue multi-sources AniList, MangaDex, Open Library & AnimeSamaApi. Conçu pour mobile et Android.</p>
+    <p class="eyebrow">OTAKU-WORLD v0.9</p>
+    <h1>Suis tes animés.<br><span>Sans rien perdre.</span></h1>
+    <p>Catalogue multi-sources AniList, MangaDex, Open Library avec synchronisation de tes favoris, progression des épisodes/chapitres et historique en temps réel.</p>
     <div class="search big-search">
       <span class="search-icon">🔍</span>
       <input id="searchInput" type="search" placeholder="Rechercher un anime, manga, webtoon..." autocomplete="off">
@@ -117,15 +118,17 @@
     </div>
   </section>
 
-  <!-- Section Profil & Progression -->
+  <!-- Section Profil & Espace Personnel v0.9 (Favoris, Historique, Progression) -->
   <section id="profileSection" class="section hidden">
     <div class="section-head">
       <div>
-        <p class="eyebrow">ESPACE MEMBRE</p>
-        <h2>👤 Mon profil</h2>
+        <p class="eyebrow">ESPACE PERSONNEL</p>
+        <h2>👤 Mon Espace</h2>
       </div>
       <button id="logoutBtn" class="ghost small">Déconnexion</button>
     </div>
+
+    <!-- Profil Header Card -->
     <div class="profile-card">
       <div class="avatar-wrap">
         <img id="avatarImg" class="avatar-img" src="" alt="Avatar">
@@ -150,10 +153,36 @@
       <div class="stat-card"><b id="readMin">0</b><span>Min. manga</span></div>
     </div>
 
-    <div class="section-head">
-      <h3>🏅 Badges débloqués</h3>
+    <!-- Onglets de la bibliothèque personnelle -->
+    <div class="library-tabs">
+      <button class="lib-tab active" data-tab="favorites">❤️ Favoris (<span id="favCount">0</span>)</button>
+      <button class="lib-tab" data-tab="progress">📊 En cours (<span id="progCount">0</span>)</button>
+      <button class="lib-tab" data-tab="history">🕒 Historique (<span id="histCount">0</span>)</button>
+      <button class="lib-tab" data-tab="badges">🏅 Badges</button>
     </div>
-    <div id="badges" class="badges"></div>
+
+    <!-- Vues de la bibliothèque -->
+    <div id="libContentFavorites" class="lib-pane">
+      <div id="favoritesList" class="grid"></div>
+      <p id="noFavMsg" class="muted empty-msg hidden">Aucun favori pour le moment. Clique sur le ❤️ d'une fiche pour l'ajouter !</p>
+    </div>
+
+    <div id="libContentProgress" class="lib-pane hidden">
+      <div id="progressList" class="progress-list"></div>
+      <p id="noProgMsg" class="muted empty-msg hidden">Aucun suivi en cours. Mets à jour ta progression depuis la fiche d'un animé ou d'un manga !</p>
+    </div>
+
+    <div id="libContentHistory" class="lib-pane hidden">
+      <div class="history-actions">
+        <button id="clearHistoryBtn" class="ghost small">🗑️ Effacer l'historique</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+      <p id="noHistMsg" class="muted empty-msg hidden">Aucun historique récent.</p>
+    </div>
+
+    <div id="libContentBadges" class="lib-pane hidden">
+      <div id="badges" class="badges"></div>
+    </div>
   </section>
 
   <!-- Section Dashboard Owner / Admin -->
@@ -251,7 +280,7 @@
   </a>
   <a href="#profileSection" class="bottom-nav-item" data-target="profileSection">
     <span class="icon">👤</span>
-    <span>Profil</span>
+    <span>Mon Espace</span>
   </a>
 </nav>
 
@@ -268,7 +297,7 @@
   </div>
 </div>
 
-<!-- Modale Détail Oeuvre -->
+<!-- Modale Détail Oeuvre v0.9 (avec Favoris & Suivi Progression) -->
 <div id="detailModal" class="modal hidden">
   <div class="detail-card">
     <button class="close" data-close>×</button>
@@ -279,10 +308,27 @@
           <p class="eyebrow" id="detailType">ANIME</p>
           <h2 id="detailTitle">Titre de l'anime</h2>
         </div>
-        <span id="detailScore" class="score">--</span>
+        <div class="detail-top-right">
+          <button id="favBtn" class="fav-toggle-btn" title="Ajouter aux favoris">🤍</button>
+          <span id="detailScore" class="score">--</span>
+        </div>
       </div>
       <p id="detailDesc" class="muted"></p>
       <div id="detailMeta" class="chips"></div>
+
+      <!-- Progression Tracker Box v0.9 -->
+      <div id="progressTrackerBox" class="tracker-box">
+        <div class="tracker-head">
+          <span class="tracker-label" id="trackerUnitLabel">📺 Progression</span>
+          <b id="trackerCounter">0 / ?</b>
+        </div>
+        <div class="progress"><i id="trackerBar"></i></div>
+        <div class="tracker-controls">
+          <button id="progMinusBtn" class="ghost small">− 1</button>
+          <button id="progPlusBtn" class="primary small">+ 1 Avancer</button>
+          <button id="progCompleteBtn" class="ghost small">✓ Terminé</button>
+        </div>
+      </div>
       
       <!-- Conteneur Trailer Officiel YouTube -->
       <div id="detailTrailerBox" class="trailer-box hidden">
@@ -321,7 +367,7 @@
 </div>
 
 <footer>
-  <p>OTAKU-WORLD v0.8 • Propulsé par AniList, MangaDex & Open Library</p>
+  <p>OTAKU-WORLD v0.9 • Synchronisation Cloud Firebase • AniList & MangaDex</p>
   <small>Conçu pour une expérience mobile et Android optimale</small>
 </footer>
 
