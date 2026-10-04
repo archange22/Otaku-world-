@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Otaku-World | Plateforme Anime, Manga & Webtoon</title>
   <meta name="description" content="Découvrez, suivez et lisez vos animes, mangas et webtoons préférés sur Otaku-World. Interface sombre, fluide et mobile-first.">
-  <meta name="theme-color" content="#0b0417">
+  <meta name="theme-color" content="#07020e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Barre de navigation supérieure (Desktop & Mobile header) -->
+
+  <!-- Écran de chargement / Splash Screen animé au démarrage -->
+  <div id="splashScreen" class="splash-screen">
+    <div class="splash-center">
+      <div class="splash-logo-circle">
+        <span class="splash-logo-ow">OW</span>
+      </div>
+      <div class="splash-progress-track">
+        <div id="splashProgressBar" class="splash-progress-fill"></div>
+      </div>
+      <ul class="splash-steps">
+        <li id="stepProfile" class="step-item active"><span class="step-dot"></span> Chargement du profil</li>
+        <li id="stepPrefs" class="step-item"><span class="step-dot"></span> Chargement des préférences</li>
+        <li id="stepAnime" class="step-item"><span class="step-dot"></span> Chargement des animés</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Barre de navigation supérieure (Header) -->
   <header class="app-header">
     <div class="header-content">
       <div class="header-left">
@@ -26,6 +44,14 @@
         </a>
       </div>
 
+      <!-- Barre de recherche centrale comme dans FrAnime -->
+      <div class="header-search-center">
+        <div class="header-search-input-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="topSearchBar" placeholder="Rechercher un anime, manga..." autocomplete="off">
+        </div>
+      </div>
+
       <!-- Navigation Desktop -->
       <nav class="desktop-nav desktop-only">
         <a href="#home" class="nav-link active" data-nav="home">Accueil</a>
@@ -33,17 +59,10 @@
         <a href="#catalog?type=anime" class="nav-link" data-nav="catalog-anime">Anime</a>
         <a href="#catalog?type=manga" class="nav-link" data-nav="catalog-manga">Manga</a>
         <a href="#catalog?type=webtoon" class="nav-link" data-nav="catalog-webtoon">Webtoon</a>
-        <a href="#catalog?type=comics" class="nav-link" data-nav="catalog-comics">Comics</a>
         <a href="#library" class="nav-link" data-nav="library">Ma bibliothèque</a>
       </nav>
 
       <div class="header-right">
-        <button id="btnHeaderSearch" class="search-trigger" aria-label="Recherche">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span class="desktop-only">Rechercher...</span>
-          <kbd class="desktop-only">Ctrl K</kbd>
-        </button>
-
         <div id="userHeaderArea" class="user-area">
           <button id="btnLoginTrigger" class="btn btn-outline btn-sm">Connexion</button>
         </div>
@@ -73,7 +92,6 @@
         <a href="#catalog?type=anime" class="drawer-item"><span class="drawer-icon">📺</span> Anime</a>
         <a href="#catalog?type=manga" class="drawer-item"><span class="drawer-icon">📖</span> Manga</a>
         <a href="#catalog?type=webtoon" class="drawer-item"><span class="drawer-icon">📱</span> Webtoon</a>
-        <a href="#catalog?type=comics" class="drawer-item"><span class="drawer-icon">💥</span> Comics & Livres</a>
         <a href="#library" class="drawer-item"><span class="drawer-icon">📚</span> Ma bibliothèque</a>
         <a href="#profile" class="drawer-item"><span class="drawer-icon">👤</span> Mon profil</a>
         <div id="adminDrawerLink" style="display: none;">
@@ -90,92 +108,122 @@
     </div>
   </aside>
 
-  <!-- Contenu Principal (Single Page Architecture) -->
+  <!-- Contenu Principal -->
   <main id="appMain" class="app-main">
 
     <!-- 1. VUE ACCUEIL -->
     <section id="viewHome" class="view-section active">
-      <!-- Bannière Hero anime à la une -->
+
+      <!-- Bannière Pop-up Annonce "News" comme sur FrAnime -->
+      <div id="newsAnnouncementBanner" class="news-banner">
+        <div class="news-banner-content">
+          <div class="news-badge-icon">📢</div>
+          <div class="news-text-box">
+            <span class="news-title">Nouvelle mise à jour Otaku-World</span>
+            <span class="news-sub">Nouveaux lecteurs Anime & MangaDex disponibles !</span>
+          </div>
+          <a href="#catalog?type=manga" class="news-btn-action">Accéder ›</a>
+          <button id="btnCloseNewsBanner" class="news-btn-close">✕</button>
+        </div>
+      </div>
+
+      <!-- Hero Banner animé -->
       <div id="heroBanner" class="hero-banner">
         <div class="hero-skeleton skeleton"></div>
       </div>
 
+      <!-- Bandeau invitant à la connexion pour l'historique si déconnecté -->
+      <div id="guestHistoryNotice" class="container guest-notice-banner" style="display: none;">
+        <span>Connectez-vous pour voir votre historique et reprendre vos animes</span>
+        <button id="btnNoticeLogin" class="btn btn-primary btn-sm">➔ Connexion</button>
+      </div>
+
       <div class="container">
-        <!-- 1.1 Continuer à regarder / lire (si progression) -->
+
+        <!-- 1.1 Continuer à regarder / Reprendre (si progression) -->
         <div id="sectionContinue" class="home-section" style="display: none;">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">▶</span> Continuer</h2>
+            <h2 class="section-title"><span class="section-icon text-accent">▶</span> Reprendre</h2>
             <a href="#library?tab=continue" class="section-more">Voir tout →</a>
           </div>
           <div id="continueList" class="cards-carousel"></div>
         </div>
 
-        <!-- 1.2 Recommandés pour toi -->
-        <div id="sectionRecommended" class="home-section" style="display: none;">
-          <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">✨</span> Recommandés pour toi</h2>
-            <span class="section-tag">Basé sur vos goûts</span>
-          </div>
-          <div id="recommendedGrid" class="media-row"></div>
-        </div>
-
-        <!-- 1.3 Tendances -->
+        <!-- 1.2 Derniers épisodes sortis (avec commutateurs VOSTFR / VF) -->
         <div class="home-section">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">🔥</span> Tendances du moment</h2>
-            <a href="#catalog?sort=TRENDING_DESC" class="section-more">Explorer →</a>
+            <h2 class="section-title"><span class="section-icon text-danger">⚡</span> Derniers épisodes</h2>
+            <div class="lang-toggle-pills">
+              <button class="flag-pill active" id="btnFilterEpVOSTFR" title="VOSTFR">🇯🇵</button>
+              <button class="flag-pill" id="btnFilterEpVF" title="VF">🇫🇷</button>
+            </div>
           </div>
-          <div id="trendingGrid" class="media-row">
-            <!-- Skeleton cards -->
-            <div class="media-card skeleton"></div>
-            <div class="media-card skeleton"></div>
-            <div class="media-card skeleton"></div>
-            <div class="media-card skeleton"></div>
-          </div>
+          <div id="latestEpisodesGrid" class="cards-carousel"></div>
         </div>
 
-        <!-- 1.4 Nouveautés de la saison -->
+        <!-- 1.3 Calendrier du jour : Aujourd'hui [JOUR] (ex: Aujourd'hui DIMANCHE) -->
         <div class="home-section">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">⚡</span> Nouveautés</h2>
-            <a href="#catalog?sort=START_DATE_DESC" class="section-more">Voir plus →</a>
+            <h2 class="section-title">
+              <span class="section-icon text-warning">📅</span>
+              <span id="calendarDayTitle">Aujourd'hui DIMANCHE</span>
+            </h2>
+            <span class="section-tag">Planning des sorties</span>
           </div>
-          <div id="latestGrid" class="media-row"></div>
+          <div id="todayScheduleGrid" class="cards-carousel"></div>
         </div>
 
-        <!-- 1.5 Top Anime Populaires -->
+        <!-- 1.4 Top de la semaine (avec badges #1, #2... et nombre de vues) -->
         <div class="home-section">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">🏆</span> Anime Populaires</h2>
-            <a href="#catalog?type=anime&sort=POPULARITY_DESC" class="section-more">Tout voir →</a>
+            <h2 class="section-title"><span class="section-icon text-accent">👁️</span> Top de la semaine</h2>
+            <a href="#catalog?sort=TRENDING_DESC" class="section-more">Classement complet →</a>
           </div>
-          <div id="popularAnimeGrid" class="media-row"></div>
+          <div id="weeklyTopGrid" class="media-row"></div>
         </div>
 
-        <!-- 1.6 Top Manga Populaires -->
+        <!-- 1.5 Les plus aimés (avec likes et notes) -->
         <div class="home-section">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">📖</span> Manga Populaires</h2>
-            <a href="#catalog?type=manga&sort=POPULARITY_DESC" class="section-more">Tout voir →</a>
+            <h2 class="section-title"><span class="section-icon text-danger">❤️</span> Les plus aimés</h2>
+            <a href="#catalog?sort=POPULARITY_DESC" class="section-more">Découvrir →</a>
           </div>
-          <div id="popularMangaGrid" class="media-row"></div>
+          <div id="mostLikedGrid" class="media-row"></div>
         </div>
 
-        <!-- 1.7 Webtoons Populaires -->
+        <!-- 1.6 Cette saison -->
         <div class="home-section">
           <div class="section-header">
-            <h2 class="section-title"><span class="section-icon">📱</span> Webtoons & Manhwa</h2>
-            <a href="#catalog?type=webtoon" class="section-more">Tout voir →</a>
+            <h2 class="section-title"><span class="section-icon text-warning">☀️</span> Cette saison</h2>
+            <a href="#catalog?sort=START_DATE_DESC" class="section-more">Tout voir →</a>
           </div>
-          <div id="popularWebtoonGrid" class="media-row"></div>
+          <div id="currentSeasonGrid" class="media-row"></div>
         </div>
+
+        <!-- 1.7 Recherche rapide par thèmes (Nuage interactif avec filtres ET / OU) -->
+        <div class="home-section fast-search-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon text-accent">🔍</span> Recherche rapide</h2>
+          </div>
+          <div class="fast-search-box">
+            <p class="fast-search-hint">Choisis un ou plusieurs thèmes :</p>
+            <div id="themeTagsCloud" class="tags-cloud"></div>
+
+            <div class="logic-switcher-bar">
+              <button id="btnLogicAND" class="logic-btn active">ET Tous les thèmes</button>
+              <button id="btnLogicOR" class="logic-btn">OU Au moins un thème</button>
+            </div>
+            <p id="logicExplanation" class="logic-explanation">ET : chaque thème choisi doit être présent.</p>
+          </div>
+          <div id="themeSearchResults" class="media-grid" style="margin-top: 18px;"></div>
+        </div>
+
       </div>
     </section>
 
     <!-- 2. VUE CATALOGUE -->
     <section id="viewCatalog" class="view-section">
       <div class="container">
-        <!-- En-tête et onglets type -->
         <div class="catalog-top">
           <h1 class="page-title">Catalogue</h1>
           <div class="type-segmented-control">
@@ -183,11 +231,9 @@
             <button class="seg-btn" data-type="anime">Anime</button>
             <button class="seg-btn" data-type="manga">Manga</button>
             <button class="seg-btn" data-type="webtoon">Webtoon</button>
-            <button class="seg-btn" data-type="comics">Comics</button>
           </div>
         </div>
 
-        <!-- Barre recherche + filtre bottom-sheet trigger -->
         <div class="catalog-bar">
           <div class="catalog-search-wrap">
             <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -196,14 +242,11 @@
           <button id="btnOpenFilterSheet" class="btn btn-secondary filter-trigger-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             <span>Filtres</span>
-            <span id="activeFilterBadge" class="filter-count" style="display: none;">0</span>
           </button>
         </div>
 
-        <!-- Grille de résultats -->
         <div id="catalogGrid" class="media-grid"></div>
 
-        <!-- Pagination / Chargement infini -->
         <div class="catalog-pagination">
           <button id="btnLoadMoreCatalog" class="btn btn-outline btn-lg">Charger plus de titres</button>
         </div>
@@ -217,29 +260,15 @@
           <h1 class="page-title">Recherche globale</h1>
           <div class="search-input-box">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="globalSearchInput" class="main-search-input" placeholder="Ex: Solo Leveling, One Piece, Chainsaw Man..." autofocus>
+            <input type="search" id="globalSearchInput" class="main-search-input" placeholder="Ex: Solo Leveling, Jujutsu Kaisen, Demon Slayer...">
             <button id="btnClearSearch" class="btn-clear" style="display: none;">✕</button>
           </div>
-
-          <div class="search-tabs">
-            <button class="search-tab active" data-filter="all">Tout</button>
-            <button class="search-tab" data-filter="anime">Anime</button>
-            <button class="search-tab" data-filter="manga">Manga</button>
-            <button class="search-tab" data-filter="webtoon">Webtoon</button>
-            <button class="search-tab" data-filter="comics">Comics</button>
-          </div>
         </div>
-
-        <div id="searchResultsArea" class="search-results">
-          <div class="search-placeholder">
-            <span class="placeholder-icon">🔍</span>
-            <p>Tapez le nom d'un anime, manga ou webtoon pour lancer la recherche.</p>
-          </div>
-        </div>
+        <div id="searchResultsArea" class="search-results"></div>
       </div>
     </section>
 
-    <!-- 4. VUE FICHE DÉTAILLÉE ANIME / MANGA / WEBTOON -->
+    <!-- 4. VUE FICHE DÉTAILLÉE -->
     <section id="viewMediaDetail" class="view-section">
       <div id="mediaDetailBackdrop" class="detail-backdrop"></div>
       <div class="container detail-container">
@@ -247,74 +276,58 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           <span>Retour</span>
         </button>
-
-        <div id="mediaDetailContent" class="detail-content">
-          <!-- Injecté dynamiquement -->
-        </div>
+        <div id="mediaDetailContent" class="detail-content"></div>
       </div>
     </section>
 
     <!-- 5. VUE LECTEUR VIDÉO (ANIME) -->
     <section id="viewVideoPlayer" class="view-section">
       <div class="player-page-container">
-        <!-- Barre supérieure du lecteur -->
         <div class="player-header">
           <button id="btnBackFromPlayer" class="btn-back-player">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-            <span>Retour à la fiche</span>
+            <span>Retour</span>
           </button>
           <div class="player-title-box">
-            <h2 id="playerAnimeTitle" class="player-media-title">Titre de l'anime</h2>
+            <h2 id="playerAnimeTitle" class="player-media-title">Titre</h2>
             <p id="playerEpisodeSubtitle" class="player-ep-sub">Saison 1 • Épisode 1</p>
           </div>
         </div>
 
-        <!-- Conteneur vidéo responsive 16:9 -->
         <div class="video-stage">
           <div id="videoPlayerWrapper" class="video-wrapper">
-            <!-- Iframe lecteur autorisé ou balise video HTML5 -->
             <div id="playerContainer" class="player-container"></div>
           </div>
         </div>
 
-        <!-- Contrôles sous le lecteur avec boutons géants pour le pouce -->
         <div class="player-controls-bar">
           <button id="btnPrevEpisode" class="btn btn-secondary btn-control-nav" disabled>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
-            <span>Épisode précédent</span>
+            ◀ Épisode précédent
           </button>
-
           <div class="player-current-chip">
             <span id="playerCurrentBadge">EP 1</span>
           </div>
-
           <button id="btnNextEpisode" class="btn btn-primary btn-control-nav">
-            <span>Épisode suivant</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            Épisode suivant ▶
           </button>
         </div>
 
-        <!-- Sélecteur de saison et liste des épisodes -->
         <div class="container player-episodes-section">
           <div class="episodes-header-bar">
             <h3>Liste des épisodes</h3>
             <div id="playerLangSelector" class="lang-selector-group">
               <button class="lang-pill active" data-lang="VOSTFR">VOSTFR</button>
               <button class="lang-pill" data-lang="VF">VF</button>
-              <button class="lang-pill" data-lang="VO">VO</button>
             </div>
           </div>
-
-          <!-- Grille d'épisodes grands boutons faciles au doigt -->
           <div id="playerEpisodesGrid" class="episodes-grid-large"></div>
         </div>
       </div>
     </section>
 
-    <!-- 6. VUE LECTEUR MANGA (LECTURE RÉELLE MANGADEX) -->
+    <!-- 6. VUE LECTEUR MANGA (MANGADEX REEL) -->
     <section id="viewMangaReader" class="view-section">
       <div class="manga-reader-container">
-        <!-- Barre de contrôle en haut du lecteur manga -->
         <div class="reader-topbar">
           <button id="btnBackFromReader" class="btn-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
@@ -324,16 +337,13 @@
             <span id="readerChapterBadge" class="reader-ch-badge">Chapitre 1</span>
           </div>
           <div class="reader-actions">
-            <!-- Choix du mode : Page ou Webtoon (vertical) -->
-            <button id="btnToggleReaderMode" class="btn-pill" title="Mode de lecture">
+            <button id="btnToggleReaderMode" class="btn-pill">
               <span id="readerModeLabel">Mode Page</span>
             </button>
-            <!-- Sélecteur de chapitre -->
             <select id="readerChapterSelect" class="chapter-dropdown"></select>
           </div>
         </div>
 
-        <!-- Zone d'affichage des pages du manga -->
         <div id="mangaViewport" class="manga-viewport mode-page">
           <div id="mangaPageLoader" class="manga-loader">
             <div class="spinner"></div>
@@ -342,7 +352,6 @@
           <div id="mangaPageContainer" class="manga-page-container"></div>
         </div>
 
-        <!-- Barre de navigation des pages (Mode Page) -->
         <div id="mangaPageControls" class="manga-page-controls">
           <button id="btnMangaPrevPage" class="btn btn-secondary btn-page-nav">
             ◀ Page précédente
@@ -361,32 +370,25 @@
     <section id="viewLibrary" class="view-section">
       <div class="container">
         <h1 class="page-title">Ma bibliothèque</h1>
-
-        <!-- Onglets bibliothèque -->
         <div class="library-tabs">
           <button class="lib-tab active" data-tab="continue">Continuer (<span id="countContinue">0</span>)</button>
           <button class="lib-tab" data-tab="favorites">Favoris (<span id="countFavorites">0</span>)</button>
           <button class="lib-tab" data-tab="watchlist">À regarder (<span id="countWatchlist">0</span>)</button>
           <button class="lib-tab" data-tab="history">Historique (<span id="countHistory">0</span>)</button>
         </div>
-
-        <!-- Contenu des onglets -->
         <div id="libraryContentGrid" class="media-grid"></div>
-
         <div id="libraryEmptyState" class="empty-state" style="display: none;">
           <span class="empty-icon">📂</span>
           <h3>Aucun élément pour l'instant</h3>
-          <p>Ajoutez des animes ou mangas à vos favoris ou commencez une lecture pour les retrouver ici.</p>
-          <a href="#catalog" class="btn btn-primary">Explorer le catalogue</a>
+          <p>Ajoutez des animes ou mangas à vos favoris pour les retrouver ici.</p>
         </div>
       </div>
     </section>
 
-    <!-- 8. VUE PROFIL & XP -->
+    <!-- 8. VUE PROFIL -->
     <section id="viewProfile" class="view-section">
       <div class="container profile-container">
         <div id="profileLoggedView" style="display: none;">
-          <!-- Carte d'en-tête utilisateur -->
           <div class="profile-card">
             <div class="avatar-wrapper">
               <img id="profileAvatarImg" src="https://api.dicebear.com/7.x/bottts/svg?seed=otaku" alt="Avatar" class="profile-avatar">
@@ -402,8 +404,7 @@
                 <span id="profileRoleBadge" class="role-badge role-member">Membre</span>
               </div>
               <p id="profileEmail" class="profile-email">email@example.com</p>
-              
-              <!-- Barre d'XP et niveau -->
+
               <div class="xp-container">
                 <div class="xp-labels">
                   <span class="level-tag">Niveau <strong id="profileLevel">1</strong></span>
@@ -417,7 +418,6 @@
             </div>
           </div>
 
-          <!-- Statistiques de consommation -->
           <div class="stats-grid">
             <div class="stat-card">
               <span class="stat-icon">⏱️</span>
@@ -449,7 +449,6 @@
             </div>
           </div>
 
-          <!-- Badges & Objectifs -->
           <div class="profile-section">
             <h3 class="section-title">🏆 Badges & Paliers</h3>
             <div id="badgesContainer" class="badges-grid"></div>
@@ -460,55 +459,39 @@
           </div>
         </div>
 
-        <!-- État non connecté -->
         <div id="profileGuestView" class="empty-state">
           <span class="empty-icon">🔐</span>
           <h2>Connexion requise</h2>
-          <p>Connectez-vous pour synchroniser vos favoris, reprendre vos animes et mangas sur n'importe quel appareil et gagner de l'XP.</p>
+          <p>Connectez-vous pour synchroniser vos favoris et gagner de l'XP.</p>
           <button id="btnOpenAuthFromProfile" class="btn btn-primary btn-lg">Se connecter / S'inscrire</button>
         </div>
       </div>
     </section>
 
-    <!-- 9. VUE DASHBOARD ADMIN / OWNER (Protégée) -->
+    <!-- 9. DASHBOARD ADMIN -->
     <section id="viewAdmin" class="view-section">
       <div class="container admin-container">
         <div class="admin-header">
           <div>
             <h1 class="page-title">Dashboard Administration</h1>
-            <p class="admin-subtitle">Gestion des rôles, statistiques et état du réseau Otaku-World</p>
+            <p class="admin-subtitle">Gestion des rôles et statistiques</p>
           </div>
           <span class="role-badge role-owner">Espace Restreint</span>
         </div>
 
-        <!-- Cartes statistiques -->
         <div class="admin-stats-grid">
           <div class="admin-stat-card">
             <h4>Utilisateurs inscrits</h4>
             <h2 id="admTotalUsers">--</h2>
-            <span class="stat-trend">Firebase Realtime DB</span>
           </div>
           <div class="admin-stat-card">
-            <h4>XP total distribué</h4>
+            <h4>XP total</h4>
             <h2 id="admTotalXp">--</h2>
-            <span class="stat-trend">Niveaux actifs</span>
-          </div>
-          <div class="admin-stat-card">
-            <h4>API AniList</h4>
-            <h2 class="text-success" id="admAniListStatus">Opérationnel</h2>
-            <span class="stat-trend">GraphQL v2</span>
-          </div>
-          <div class="admin-stat-card">
-            <h4>API MangaDex</h4>
-            <h2 class="text-success" id="admMangaDexStatus">Opérationnel</h2>
-            <span class="stat-trend">Lecture direct</span>
           </div>
         </div>
 
-        <!-- Gestion des utilisateurs et rôles (Seul Owner peut éditer) -->
         <div class="admin-section">
           <h3>Membres & Rôles</h3>
-          <p class="text-muted">Seul l'Owner peut modifier les permissions (Admin, Modérateur, Membre).</p>
           <div class="table-responsive">
             <table class="admin-table">
               <thead>
@@ -516,13 +499,11 @@
                   <th>Utilisateur</th>
                   <th>Email</th>
                   <th>Niveau</th>
-                  <th>Rôle actuel</th>
+                  <th>Rôle</th>
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody id="adminUsersTableBody">
-                <tr><td colspan="5" class="text-center">Chargement des utilisateurs...</td></tr>
-              </tbody>
+              <tbody id="adminUsersTableBody"></tbody>
             </table>
           </div>
         </div>
@@ -555,16 +536,15 @@
     </a>
   </nav>
 
-  <!-- Bottom Sheet pour les Filtres (Mobile) -->
+  <!-- Bottom Sheet Filtres -->
   <div id="filterBottomSheet" class="bottom-sheet">
     <div class="bottom-sheet-overlay" id="filterSheetOverlay"></div>
     <div class="bottom-sheet-panel">
       <div class="bottom-sheet-handle"></div>
       <div class="bottom-sheet-header">
-        <h3>Filtres de recherche</h3>
+        <h3>Filtres</h3>
         <button id="btnCloseFilterSheet" class="btn-icon">✕</button>
       </div>
-
       <div class="bottom-sheet-body">
         <div class="filter-group">
           <label>Genre</label>
@@ -575,45 +555,28 @@
             <option value="Comedy">Comédie</option>
             <option value="Drama">Drame</option>
             <option value="Fantasy">Fantastique</option>
-            <option value="Horror">Horreur</option>
-            <option value="Mystery">Mystère</option>
+            <option value="Isekai">Isekai</option>
             <option value="Romance">Romance</option>
             <option value="Sci-Fi">Science-Fiction</option>
-            <option value="Slice of Life">Tranche de vie</option>
-            <option value="Sports">Sport</option>
             <option value="Supernatural">Surnaturel</option>
           </select>
         </div>
-
-        <div class="filter-group">
-          <label>Statut</label>
-          <select id="filterStatus" class="input-field">
-            <option value="">Tous les statuts</option>
-            <option value="RELEASING">En cours</option>
-            <option value="FINISHED">Terminé</option>
-            <option value="NOT_YET_RELEASED">À venir</option>
-          </select>
-        </div>
-
         <div class="filter-group">
           <label>Trier par</label>
           <select id="filterSort" class="input-field">
             <option value="POPULARITY_DESC">Les plus populaires</option>
             <option value="SCORE_DESC">Mieux notés</option>
             <option value="TRENDING_DESC">Tendances actuelles</option>
-            <option value="START_DATE_DESC">Plus récents</option>
           </select>
         </div>
       </div>
-
       <div class="bottom-sheet-footer">
-        <button id="btnResetFilters" class="btn btn-outline">Réinitialiser</button>
-        <button id="btnApplyFilters" class="btn btn-primary">Appliquer les filtres</button>
+        <button id="btnApplyFilters" class="btn btn-primary btn-full">Appliquer</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal Auth (Connexion / Inscription) -->
+  <!-- Modal Auth -->
   <div id="authModal" class="modal">
     <div class="modal-backdrop" id="authModalBackdrop"></div>
     <div class="modal-card">
@@ -635,28 +598,22 @@
           <label for="authUsernameInput">Pseudo</label>
           <input type="text" id="authUsernameInput" class="input-field" placeholder="Ex: ErenYeager22">
         </div>
-
         <div class="form-group">
-          <label for="authEmailInput">Adresse Email</label>
+          <label for="authEmailInput">Email</label>
           <input type="email" id="authEmailInput" class="input-field" placeholder="votre@email.com" required>
         </div>
-
         <div class="form-group">
           <label for="authPasswordInput">Mot de passe</label>
           <input type="password" id="authPasswordInput" class="input-field" placeholder="••••••••" required>
         </div>
-
         <div id="authErrorMessage" class="auth-error" style="display: none;"></div>
-
         <button type="submit" id="btnSubmitAuth" class="btn btn-primary btn-full btn-lg">Se connecter</button>
       </form>
     </div>
   </div>
 
-  <!-- Toast de notification -->
   <div id="toastNotification" class="toast"></div>
 
-  <!-- Scripts Firebase & Application -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
