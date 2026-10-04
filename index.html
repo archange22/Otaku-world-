@@ -1,376 +1,662 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#090912">
-  <meta name="description" content="Otaku-World - Plateforme anime, manga, webtoon et comics avec suivi">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Otaku-World v0.9</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Otaku-World | Plateforme Anime, Manga & Webtoon</title>
+  <meta name="description" content="Découvrez, suivez et lisez vos animes, mangas et webtoons préférés sur Otaku-World. Interface sombre, fluide et mobile-first.">
+  <meta name="theme-color" content="#0b0417">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<header class="topbar">
-  <div class="topbar-left">
-    <button id="menuBtn" class="icon-btn" aria-label="Ouvrir le menu">☰</button>
-    <a class="logo" href="#home">OTAKU<span>-WORLD</span></a>
-    <span class="version-chip">v0.9</span>
-  </div>
-  <div class="topbar-right">
-    <button id="profileBtn" class="ghost">👤 Connexion</button>
-  </div>
-</header>
+  <!-- Barre de navigation supérieure (Desktop & Mobile header) -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="header-left">
+        <button id="btnDrawerOpen" class="btn-icon mobile-only" aria-label="Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <a href="#home" class="logo">
+          <span class="logo-badge">OW</span>
+          <span class="logo-text">Otaku<span class="logo-accent">World</span></span>
+        </a>
+      </div>
 
-<div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
-<aside id="drawer" class="drawer">
-  <div class="drawer-head">
-    <div class="logo">OTAKU<span>-WORLD</span></div>
-    <button id="closeMenu" class="icon-btn" aria-label="Fermer">×</button>
-  </div>
-  <nav class="drawer-nav">
-    <a href="#home">🏠 Accueil</a>
-    <a href="#discover">🔎 Découvrir & Filtres</a>
-    <a href="#profileSection" onclick="switchProfileTab('favorites')">❤️ Mes Favoris</a>
-    <a href="#profileSection" onclick="switchProfileTab('progress')">📊 Suivi Progression</a>
-    <a href="#profileSection" onclick="switchProfileTab('history')">🕒 Mon Historique</a>
-    <a href="#extractsSection">🎬 Extraits & Trailers</a>
-    <a href="#profileSection" onclick="switchProfileTab('profile')">👤 Mon profil</a>
-    <a id="dashboardNav" href="#dashboardSection" class="hidden">🛠️ Dashboard Owner</a>
+      <!-- Navigation Desktop -->
+      <nav class="desktop-nav desktop-only">
+        <a href="#home" class="nav-link active" data-nav="home">Accueil</a>
+        <a href="#catalog" class="nav-link" data-nav="catalog">Catalogue</a>
+        <a href="#catalog?type=anime" class="nav-link" data-nav="catalog-anime">Anime</a>
+        <a href="#catalog?type=manga" class="nav-link" data-nav="catalog-manga">Manga</a>
+        <a href="#catalog?type=webtoon" class="nav-link" data-nav="catalog-webtoon">Webtoon</a>
+        <a href="#catalog?type=comics" class="nav-link" data-nav="catalog-comics">Comics</a>
+        <a href="#library" class="nav-link" data-nav="library">Ma bibliothèque</a>
+      </nav>
+
+      <div class="header-right">
+        <button id="btnHeaderSearch" class="search-trigger" aria-label="Recherche">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="desktop-only">Rechercher...</span>
+          <kbd class="desktop-only">Ctrl K</kbd>
+        </button>
+
+        <div id="userHeaderArea" class="user-area">
+          <button id="btnLoginTrigger" class="btn btn-outline btn-sm">Connexion</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tiroir de navigation latéral (Drawer) pour mobile/tablette -->
+  <aside id="sideDrawer" class="drawer">
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div class="logo">
+          <span class="logo-badge">OW</span>
+          <span class="logo-text">Otaku<span class="logo-accent">World</span></span>
+        </div>
+        <button id="btnDrawerClose" class="btn-icon" aria-label="Fermer">✕</button>
+      </div>
+
+      <div id="drawerUserCard" class="drawer-user-card">
+        <!-- Rempli dynamiquement -->
+      </div>
+
+      <div class="drawer-links">
+        <a href="#home" class="drawer-item"><span class="drawer-icon">🏠</span> Accueil</a>
+        <a href="#catalog" class="drawer-item"><span class="drawer-icon">📂</span> Catalogue global</a>
+        <a href="#catalog?type=anime" class="drawer-item"><span class="drawer-icon">📺</span> Anime</a>
+        <a href="#catalog?type=manga" class="drawer-item"><span class="drawer-icon">📖</span> Manga</a>
+        <a href="#catalog?type=webtoon" class="drawer-item"><span class="drawer-icon">📱</span> Webtoon</a>
+        <a href="#catalog?type=comics" class="drawer-item"><span class="drawer-icon">💥</span> Comics & Livres</a>
+        <a href="#library" class="drawer-item"><span class="drawer-icon">📚</span> Ma bibliothèque</a>
+        <a href="#profile" class="drawer-item"><span class="drawer-icon">👤</span> Mon profil</a>
+        <div id="adminDrawerLink" style="display: none;">
+          <a href="#admin" class="drawer-item text-warning"><span class="drawer-icon">⚙️</span> Dashboard Admin</a>
+        </div>
+      </div>
+
+      <div class="drawer-footer">
+        <button id="btnInstallPwa" class="btn btn-secondary btn-full" style="display: none;">
+          📲 Installer l'application
+        </button>
+        <p class="app-version">Otaku-World v1.0 • PWA Ready</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Contenu Principal (Single Page Architecture) -->
+  <main id="appMain" class="app-main">
+
+    <!-- 1. VUE ACCUEIL -->
+    <section id="viewHome" class="view-section active">
+      <!-- Bannière Hero anime à la une -->
+      <div id="heroBanner" class="hero-banner">
+        <div class="hero-skeleton skeleton"></div>
+      </div>
+
+      <div class="container">
+        <!-- 1.1 Continuer à regarder / lire (si progression) -->
+        <div id="sectionContinue" class="home-section" style="display: none;">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">▶</span> Continuer</h2>
+            <a href="#library?tab=continue" class="section-more">Voir tout →</a>
+          </div>
+          <div id="continueList" class="cards-carousel"></div>
+        </div>
+
+        <!-- 1.2 Recommandés pour toi -->
+        <div id="sectionRecommended" class="home-section" style="display: none;">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">✨</span> Recommandés pour toi</h2>
+            <span class="section-tag">Basé sur vos goûts</span>
+          </div>
+          <div id="recommendedGrid" class="media-row"></div>
+        </div>
+
+        <!-- 1.3 Tendances -->
+        <div class="home-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">🔥</span> Tendances du moment</h2>
+            <a href="#catalog?sort=TRENDING_DESC" class="section-more">Explorer →</a>
+          </div>
+          <div id="trendingGrid" class="media-row">
+            <!-- Skeleton cards -->
+            <div class="media-card skeleton"></div>
+            <div class="media-card skeleton"></div>
+            <div class="media-card skeleton"></div>
+            <div class="media-card skeleton"></div>
+          </div>
+        </div>
+
+        <!-- 1.4 Nouveautés de la saison -->
+        <div class="home-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">⚡</span> Nouveautés</h2>
+            <a href="#catalog?sort=START_DATE_DESC" class="section-more">Voir plus →</a>
+          </div>
+          <div id="latestGrid" class="media-row"></div>
+        </div>
+
+        <!-- 1.5 Top Anime Populaires -->
+        <div class="home-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">🏆</span> Anime Populaires</h2>
+            <a href="#catalog?type=anime&sort=POPULARITY_DESC" class="section-more">Tout voir →</a>
+          </div>
+          <div id="popularAnimeGrid" class="media-row"></div>
+        </div>
+
+        <!-- 1.6 Top Manga Populaires -->
+        <div class="home-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">📖</span> Manga Populaires</h2>
+            <a href="#catalog?type=manga&sort=POPULARITY_DESC" class="section-more">Tout voir →</a>
+          </div>
+          <div id="popularMangaGrid" class="media-row"></div>
+        </div>
+
+        <!-- 1.7 Webtoons Populaires -->
+        <div class="home-section">
+          <div class="section-header">
+            <h2 class="section-title"><span class="section-icon">📱</span> Webtoons & Manhwa</h2>
+            <a href="#catalog?type=webtoon" class="section-more">Tout voir →</a>
+          </div>
+          <div id="popularWebtoonGrid" class="media-row"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. VUE CATALOGUE -->
+    <section id="viewCatalog" class="view-section">
+      <div class="container">
+        <!-- En-tête et onglets type -->
+        <div class="catalog-top">
+          <h1 class="page-title">Catalogue</h1>
+          <div class="type-segmented-control">
+            <button class="seg-btn active" data-type="all">Tous</button>
+            <button class="seg-btn" data-type="anime">Anime</button>
+            <button class="seg-btn" data-type="manga">Manga</button>
+            <button class="seg-btn" data-type="webtoon">Webtoon</button>
+            <button class="seg-btn" data-type="comics">Comics</button>
+          </div>
+        </div>
+
+        <!-- Barre recherche + filtre bottom-sheet trigger -->
+        <div class="catalog-bar">
+          <div class="catalog-search-wrap">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="catalogSearchInput" class="input-field" placeholder="Filtrer le catalogue par titre...">
+          </div>
+          <button id="btnOpenFilterSheet" class="btn btn-secondary filter-trigger-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span>Filtres</span>
+            <span id="activeFilterBadge" class="filter-count" style="display: none;">0</span>
+          </button>
+        </div>
+
+        <!-- Grille de résultats -->
+        <div id="catalogGrid" class="media-grid"></div>
+
+        <!-- Pagination / Chargement infini -->
+        <div class="catalog-pagination">
+          <button id="btnLoadMoreCatalog" class="btn btn-outline btn-lg">Charger plus de titres</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. VUE RECHERCHE GLOBALE -->
+    <section id="viewSearch" class="view-section">
+      <div class="container">
+        <div class="search-header">
+          <h1 class="page-title">Recherche globale</h1>
+          <div class="search-input-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="search" id="globalSearchInput" class="main-search-input" placeholder="Ex: Solo Leveling, One Piece, Chainsaw Man..." autofocus>
+            <button id="btnClearSearch" class="btn-clear" style="display: none;">✕</button>
+          </div>
+
+          <div class="search-tabs">
+            <button class="search-tab active" data-filter="all">Tout</button>
+            <button class="search-tab" data-filter="anime">Anime</button>
+            <button class="search-tab" data-filter="manga">Manga</button>
+            <button class="search-tab" data-filter="webtoon">Webtoon</button>
+            <button class="search-tab" data-filter="comics">Comics</button>
+          </div>
+        </div>
+
+        <div id="searchResultsArea" class="search-results">
+          <div class="search-placeholder">
+            <span class="placeholder-icon">🔍</span>
+            <p>Tapez le nom d'un anime, manga ou webtoon pour lancer la recherche.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. VUE FICHE DÉTAILLÉE ANIME / MANGA / WEBTOON -->
+    <section id="viewMediaDetail" class="view-section">
+      <div id="mediaDetailBackdrop" class="detail-backdrop"></div>
+      <div class="container detail-container">
+        <button id="btnBackFromDetail" class="btn-back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          <span>Retour</span>
+        </button>
+
+        <div id="mediaDetailContent" class="detail-content">
+          <!-- Injecté dynamiquement -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. VUE LECTEUR VIDÉO (ANIME) -->
+    <section id="viewVideoPlayer" class="view-section">
+      <div class="player-page-container">
+        <!-- Barre supérieure du lecteur -->
+        <div class="player-header">
+          <button id="btnBackFromPlayer" class="btn-back-player">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <span>Retour à la fiche</span>
+          </button>
+          <div class="player-title-box">
+            <h2 id="playerAnimeTitle" class="player-media-title">Titre de l'anime</h2>
+            <p id="playerEpisodeSubtitle" class="player-ep-sub">Saison 1 • Épisode 1</p>
+          </div>
+        </div>
+
+        <!-- Conteneur vidéo responsive 16:9 -->
+        <div class="video-stage">
+          <div id="videoPlayerWrapper" class="video-wrapper">
+            <!-- Iframe lecteur autorisé ou balise video HTML5 -->
+            <div id="playerContainer" class="player-container"></div>
+          </div>
+        </div>
+
+        <!-- Contrôles sous le lecteur avec boutons géants pour le pouce -->
+        <div class="player-controls-bar">
+          <button id="btnPrevEpisode" class="btn btn-secondary btn-control-nav" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+            <span>Épisode précédent</span>
+          </button>
+
+          <div class="player-current-chip">
+            <span id="playerCurrentBadge">EP 1</span>
+          </div>
+
+          <button id="btnNextEpisode" class="btn btn-primary btn-control-nav">
+            <span>Épisode suivant</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          </button>
+        </div>
+
+        <!-- Sélecteur de saison et liste des épisodes -->
+        <div class="container player-episodes-section">
+          <div class="episodes-header-bar">
+            <h3>Liste des épisodes</h3>
+            <div id="playerLangSelector" class="lang-selector-group">
+              <button class="lang-pill active" data-lang="VOSTFR">VOSTFR</button>
+              <button class="lang-pill" data-lang="VF">VF</button>
+              <button class="lang-pill" data-lang="VO">VO</button>
+            </div>
+          </div>
+
+          <!-- Grille d'épisodes grands boutons faciles au doigt -->
+          <div id="playerEpisodesGrid" class="episodes-grid-large"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. VUE LECTEUR MANGA (LECTURE RÉELLE MANGADEX) -->
+    <section id="viewMangaReader" class="view-section">
+      <div class="manga-reader-container">
+        <!-- Barre de contrôle en haut du lecteur manga -->
+        <div class="reader-topbar">
+          <button id="btnBackFromReader" class="btn-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div class="reader-titles">
+            <h3 id="readerMangaTitle" class="reader-title">Titre Manga</h3>
+            <span id="readerChapterBadge" class="reader-ch-badge">Chapitre 1</span>
+          </div>
+          <div class="reader-actions">
+            <!-- Choix du mode : Page ou Webtoon (vertical) -->
+            <button id="btnToggleReaderMode" class="btn-pill" title="Mode de lecture">
+              <span id="readerModeLabel">Mode Page</span>
+            </button>
+            <!-- Sélecteur de chapitre -->
+            <select id="readerChapterSelect" class="chapter-dropdown"></select>
+          </div>
+        </div>
+
+        <!-- Zone d'affichage des pages du manga -->
+        <div id="mangaViewport" class="manga-viewport mode-page">
+          <div id="mangaPageLoader" class="manga-loader">
+            <div class="spinner"></div>
+            <p>Chargement des pages depuis MangaDex...</p>
+          </div>
+          <div id="mangaPageContainer" class="manga-page-container"></div>
+        </div>
+
+        <!-- Barre de navigation des pages (Mode Page) -->
+        <div id="mangaPageControls" class="manga-page-controls">
+          <button id="btnMangaPrevPage" class="btn btn-secondary btn-page-nav">
+            ◀ Page précédente
+          </button>
+          <div class="manga-page-counter">
+            <span id="mangaCurrentPage">1</span> / <span id="mangaTotalPages">1</span>
+          </div>
+          <button id="btnMangaNextPage" class="btn btn-primary btn-page-nav">
+            Page suivante ▶
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. VUE MA BIBLIOTHÈQUE -->
+    <section id="viewLibrary" class="view-section">
+      <div class="container">
+        <h1 class="page-title">Ma bibliothèque</h1>
+
+        <!-- Onglets bibliothèque -->
+        <div class="library-tabs">
+          <button class="lib-tab active" data-tab="continue">Continuer (<span id="countContinue">0</span>)</button>
+          <button class="lib-tab" data-tab="favorites">Favoris (<span id="countFavorites">0</span>)</button>
+          <button class="lib-tab" data-tab="watchlist">À regarder (<span id="countWatchlist">0</span>)</button>
+          <button class="lib-tab" data-tab="history">Historique (<span id="countHistory">0</span>)</button>
+        </div>
+
+        <!-- Contenu des onglets -->
+        <div id="libraryContentGrid" class="media-grid"></div>
+
+        <div id="libraryEmptyState" class="empty-state" style="display: none;">
+          <span class="empty-icon">📂</span>
+          <h3>Aucun élément pour l'instant</h3>
+          <p>Ajoutez des animes ou mangas à vos favoris ou commencez une lecture pour les retrouver ici.</p>
+          <a href="#catalog" class="btn btn-primary">Explorer le catalogue</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. VUE PROFIL & XP -->
+    <section id="viewProfile" class="view-section">
+      <div class="container profile-container">
+        <div id="profileLoggedView" style="display: none;">
+          <!-- Carte d'en-tête utilisateur -->
+          <div class="profile-card">
+            <div class="avatar-wrapper">
+              <img id="profileAvatarImg" src="https://api.dicebear.com/7.x/bottts/svg?seed=otaku" alt="Avatar" class="profile-avatar">
+              <label for="avatarUploadInput" class="avatar-edit-badge" title="Changer l'avatar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </label>
+              <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="profile-info">
+              <div class="profile-name-row">
+                <h2 id="profileUsername">Pseudo</h2>
+                <span id="profileRoleBadge" class="role-badge role-member">Membre</span>
+              </div>
+              <p id="profileEmail" class="profile-email">email@example.com</p>
+              
+              <!-- Barre d'XP et niveau -->
+              <div class="xp-container">
+                <div class="xp-labels">
+                  <span class="level-tag">Niveau <strong id="profileLevel">1</strong></span>
+                  <span class="xp-tag"><span id="profileCurrentXp">0</span> / <span id="profileNextXp">100</span> XP</span>
+                </div>
+                <div class="xp-bar-track">
+                  <div id="profileXpBar" class="xp-bar-fill" style="width: 0%;"></div>
+                </div>
+                <p class="xp-note">+1 XP chaque minute passée à regarder ou lire</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statistiques de consommation -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-icon">⏱️</span>
+              <div class="stat-data">
+                <h3 id="statWatchTime">0 h</h3>
+                <p>Temps regardé</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon">📖</span>
+              <div class="stat-data">
+                <h3 id="statReadTime">0 h</h3>
+                <p>Temps de lecture</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon">🎬</span>
+              <div class="stat-data">
+                <h3 id="statAnimeDone">0</h3>
+                <p>Anime terminés</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon">📚</span>
+              <div class="stat-data">
+                <h3 id="statMangaDone">0</h3>
+                <p>Manga terminés</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Badges & Objectifs -->
+          <div class="profile-section">
+            <h3 class="section-title">🏆 Badges & Paliers</h3>
+            <div id="badgesContainer" class="badges-grid"></div>
+          </div>
+
+          <div class="profile-actions">
+            <button id="btnLogout" class="btn btn-outline btn-full">Se déconnecter</button>
+          </div>
+        </div>
+
+        <!-- État non connecté -->
+        <div id="profileGuestView" class="empty-state">
+          <span class="empty-icon">🔐</span>
+          <h2>Connexion requise</h2>
+          <p>Connectez-vous pour synchroniser vos favoris, reprendre vos animes et mangas sur n'importe quel appareil et gagner de l'XP.</p>
+          <button id="btnOpenAuthFromProfile" class="btn btn-primary btn-lg">Se connecter / S'inscrire</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. VUE DASHBOARD ADMIN / OWNER (Protégée) -->
+    <section id="viewAdmin" class="view-section">
+      <div class="container admin-container">
+        <div class="admin-header">
+          <div>
+            <h1 class="page-title">Dashboard Administration</h1>
+            <p class="admin-subtitle">Gestion des rôles, statistiques et état du réseau Otaku-World</p>
+          </div>
+          <span class="role-badge role-owner">Espace Restreint</span>
+        </div>
+
+        <!-- Cartes statistiques -->
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card">
+            <h4>Utilisateurs inscrits</h4>
+            <h2 id="admTotalUsers">--</h2>
+            <span class="stat-trend">Firebase Realtime DB</span>
+          </div>
+          <div class="admin-stat-card">
+            <h4>XP total distribué</h4>
+            <h2 id="admTotalXp">--</h2>
+            <span class="stat-trend">Niveaux actifs</span>
+          </div>
+          <div class="admin-stat-card">
+            <h4>API AniList</h4>
+            <h2 class="text-success" id="admAniListStatus">Opérationnel</h2>
+            <span class="stat-trend">GraphQL v2</span>
+          </div>
+          <div class="admin-stat-card">
+            <h4>API MangaDex</h4>
+            <h2 class="text-success" id="admMangaDexStatus">Opérationnel</h2>
+            <span class="stat-trend">Lecture direct</span>
+          </div>
+        </div>
+
+        <!-- Gestion des utilisateurs et rôles (Seul Owner peut éditer) -->
+        <div class="admin-section">
+          <h3>Membres & Rôles</h3>
+          <p class="text-muted">Seul l'Owner peut modifier les permissions (Admin, Modérateur, Membre).</p>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Niveau</th>
+                  <th>Rôle actuel</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTableBody">
+                <tr><td colspan="5" class="text-center">Chargement des utilisateurs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Navigation Inférieure Mobile (5 boutons fixes) -->
+  <nav class="bottom-nav mobile-only">
+    <a href="#home" class="bottom-nav-item active" data-tab="home">
+      <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Accueil</span>
+    </a>
+    <a href="#catalog" class="bottom-nav-item" data-tab="catalog">
+      <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+      <span>Catalogue</span>
+    </a>
+    <a href="#search" class="bottom-nav-item" data-tab="search">
+      <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <span>Recherche</span>
+    </a>
+    <a href="#library" class="bottom-nav-item" data-tab="library">
+      <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+      <span>Bibliothèque</span>
+    </a>
+    <a href="#profile" class="bottom-nav-item" data-tab="profile">
+      <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profil</span>
+    </a>
   </nav>
-  <div class="drawer-footer">
-    <p>Otaku-World v0.9 • Synchronisation Firebase</p>
-    <small>Suivi personnel & cloud</small>
-  </div>
-</aside>
 
-<main id="home">
-  <!-- Hero Section -->
-  <section class="hero">
-    <p class="eyebrow">OTAKU-WORLD v0.9</p>
-    <h1>Suis tes animés.<br><span>Sans rien perdre.</span></h1>
-    <p>Catalogue multi-sources AniList, MangaDex, Open Library avec synchronisation de tes favoris, progression des épisodes/chapitres et historique en temps réel.</p>
-    <div class="search big-search">
-      <span class="search-icon">🔍</span>
-      <input id="searchInput" type="search" placeholder="Rechercher un anime, manga, webtoon..." autocomplete="off">
-      <button id="searchBtn">Rechercher</button>
-    </div>
-  </section>
-
-  <!-- Section Découvrir / Catalogue multi-sources -->
-  <section id="discover" class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">CATALOGUE MULTI-SOURCES</p>
-        <h2>Découvrir & Explorer</h2>
+  <!-- Bottom Sheet pour les Filtres (Mobile) -->
+  <div id="filterBottomSheet" class="bottom-sheet">
+    <div class="bottom-sheet-overlay" id="filterSheetOverlay"></div>
+    <div class="bottom-sheet-panel">
+      <div class="bottom-sheet-handle"></div>
+      <div class="bottom-sheet-header">
+        <h3>Filtres de recherche</h3>
+        <button id="btnCloseFilterSheet" class="btn-icon">✕</button>
       </div>
-      <span id="apiStatus" class="status-pill">Prêt</span>
-    </div>
 
-    <!-- Onglets de sources -->
-    <div class="source-tabs">
-      <button class="source-tab active" data-source="anime">🎬 Anime</button>
-      <button class="source-tab" data-source="manga">📚 Manga</button>
-      <button class="source-tab" data-source="webtoon">📱 Webtoon & Manhwa</button>
-      <button class="source-tab" data-source="comics">🦸 Comics & Livres</button>
-    </div>
-
-    <!-- Filtres rapides -->
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label for="genreFilter">Genre</label>
-        <select id="genreFilter" class="filter-select">
-          <option value="">Tous les genres</option>
-          <option value="Action">Action</option>
-          <option value="Adventure">Aventure</option>
-          <option value="Comedy">Comédie</option>
-          <option value="Drama">Drame</option>
-          <option value="Fantasy">Fantasy</option>
-          <option value="Mystery">Mystère</option>
-          <option value="Romance">Romance</option>
-          <option value="Sci-Fi">Sci-Fi</option>
-          <option value="Supernatural">Surnaturel</option>
-          <option value="Slice of Life">Tranche de vie</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="sortFilter">Trier par</label>
-        <select id="sortFilter" class="filter-select">
-          <option value="TRENDING_DESC">🔥 Tendances</option>
-          <option value="POPULARITY_DESC">⭐ Popularité</option>
-          <option value="SCORE_DESC">🏆 Mieux notés</option>
-          <option value="START_DATE_DESC">🆕 Récents</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="safe-box">
-      🛡️ <b>Mode sûr activé</b>
-      <span>Les contenus adultes sont exclus d'office pour respecter les sources et garantir un espace sain.</span>
-    </div>
-
-    <!-- Grille des résultats -->
-    <div id="searchResults" class="grid"></div>
-    <div id="searchLoader" class="loader-box hidden">
-      <div class="spinner"></div>
-      <p>Chargement des œuvres...</p>
-    </div>
-  </section>
-
-  <!-- Section Profil & Espace Personnel v0.9 (Favoris, Historique, Progression) -->
-  <section id="profileSection" class="section hidden">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">ESPACE PERSONNEL</p>
-        <h2>👤 Mon Espace</h2>
-      </div>
-      <button id="logoutBtn" class="ghost small">Déconnexion</button>
-    </div>
-
-    <!-- Profil Header Card -->
-    <div class="profile-card">
-      <div class="avatar-wrap">
-        <img id="avatarImg" class="avatar-img" src="" alt="Avatar">
-        <label class="avatar-upload" title="Changer l'avatar">
-          📷<input id="avatarInput" type="file" accept="image/*">
-        </label>
-      </div>
-      <div class="profile-main">
-        <div class="name-line">
-          <h2 id="username">Utilisateur</h2>
-          <span id="roleBadge" class="role normal">MEMBRE</span>
+      <div class="bottom-sheet-body">
+        <div class="filter-group">
+          <label>Genre</label>
+          <select id="filterGenre" class="input-field">
+            <option value="">Tous les genres</option>
+            <option value="Action">Action</option>
+            <option value="Adventure">Aventure</option>
+            <option value="Comedy">Comédie</option>
+            <option value="Drama">Drame</option>
+            <option value="Fantasy">Fantastique</option>
+            <option value="Horror">Horreur</option>
+            <option value="Mystery">Mystère</option>
+            <option value="Romance">Romance</option>
+            <option value="Sci-Fi">Science-Fiction</option>
+            <option value="Slice of Life">Tranche de vie</option>
+            <option value="Sports">Sport</option>
+            <option value="Supernatural">Surnaturel</option>
+          </select>
         </div>
-        <p id="level">Niveau 1 • 0 XP</p>
-        <div class="progress"><i id="xpBar"></i></div>
-        <small id="nextLevel">100 XP avant le niveau 2</small>
-      </div>
-    </div>
 
-    <div class="stats">
-      <div class="stat-card"><b id="points">0</b><span>XP Total</span></div>
-      <div class="stat-card"><b id="watchMin">0</b><span>Min. anime</span></div>
-      <div class="stat-card"><b id="readMin">0</b><span>Min. manga</span></div>
-    </div>
-
-    <!-- Onglets de la bibliothèque personnelle -->
-    <div class="library-tabs">
-      <button class="lib-tab active" data-tab="favorites">❤️ Favoris (<span id="favCount">0</span>)</button>
-      <button class="lib-tab" data-tab="progress">📊 En cours (<span id="progCount">0</span>)</button>
-      <button class="lib-tab" data-tab="history">🕒 Historique (<span id="histCount">0</span>)</button>
-      <button class="lib-tab" data-tab="badges">🏅 Badges</button>
-    </div>
-
-    <!-- Vues de la bibliothèque -->
-    <div id="libContentFavorites" class="lib-pane">
-      <div id="favoritesList" class="grid"></div>
-      <p id="noFavMsg" class="muted empty-msg hidden">Aucun favori pour le moment. Clique sur le ❤️ d'une fiche pour l'ajouter !</p>
-    </div>
-
-    <div id="libContentProgress" class="lib-pane hidden">
-      <div id="progressList" class="progress-list"></div>
-      <p id="noProgMsg" class="muted empty-msg hidden">Aucun suivi en cours. Mets à jour ta progression depuis la fiche d'un animé ou d'un manga !</p>
-    </div>
-
-    <div id="libContentHistory" class="lib-pane hidden">
-      <div class="history-actions">
-        <button id="clearHistoryBtn" class="ghost small">🗑️ Effacer l'historique</button>
-      </div>
-      <div id="historyList" class="history-list"></div>
-      <p id="noHistMsg" class="muted empty-msg hidden">Aucun historique récent.</p>
-    </div>
-
-    <div id="libContentBadges" class="lib-pane hidden">
-      <div id="badges" class="badges"></div>
-    </div>
-  </section>
-
-  <!-- Section Dashboard Owner / Admin -->
-  <section id="dashboardSection" class="section hidden">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">ADMINISTRATION</p>
-        <h2>🛠️ Dashboard</h2>
-      </div>
-      <span id="dashRole" class="role owner">OWNER</span>
-    </div>
-    <div class="dash-grid">
-      <div class="dash-card"><span>👥</span><b id="userCount">0</b><small>Membres inscrits</small></div>
-      <div class="dash-card"><span>⭐</span><b id="totalXp">0</b><small>XP cumulé</small></div>
-      <div class="dash-card"><span>🎬</span><b id="contentCount">0</b><small>Résultats explorés</small></div>
-      <div class="dash-card"><span>🟢</span><b id="firebaseState">OK</b><small>Firebase RTDB</small></div>
-    </div>
-
-    <div class="admin-card">
-      <h3>⚙️ Configuration des sources</h3>
-      <div class="source-health">
-        <span>🟢 AniList API</span>
-        <span>🟢 MangaDex v5</span>
-        <span>🟢 Open Library</span>
-        <span>🔒 Contenu adulte désactivé</span>
-      </div>
-      <label>URL de ton AnimeSamaApi (métadonnées)
-        <input id="animeSamaBase" value="http://127.0.0.1:5000" placeholder="https://ton-api.example">
-      </label>
-      <label>URL de ton backend Otaku-World (Proxy MangaDex)
-        <input id="backendBase" value="" placeholder="http://127.0.0.1:3000">
-      </label>
-      <button id="saveApi" class="primary">Enregistrer sur cet appareil</button>
-      <p class="muted tiny">Nécessaire pour contourner les limitations CORS lors de l'accès aux chapitres MangaDex.</p>
-    </div>
-
-    <div class="admin-card">
-      <h3>📦 Outils & Diagnostics</h3>
-      <div class="tool-row">
-        <button id="refreshUsers" class="ghost">Actualiser stats</button>
-        <button id="testAnimeSama" class="ghost">Tester AnimeSamaApi</button>
-      </div>
-      <p id="adminMsg" class="muted tiny"></p>
-    </div>
-  </section>
-
-  <!-- Section Extraits & Previews autorisées -->
-  <section id="extractsSection" class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">CONTENUS OFFICIELS</p>
-        <h2>🎬 Extraits & Trailers</h2>
-      </div>
-      <span class="muted tiny">Aperçus autorisés</span>
-    </div>
-    <div id="extracts" class="extracts"></div>
-  </section>
-
-  <!-- Section Tendances Rapides -->
-  <section id="animeSection" class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">SÉLECTIONS</p>
-        <h2>🔥 Tendances Anime</h2>
-      </div>
-    </div>
-    <div id="animeGrid" class="grid"></div>
-  </section>
-
-  <!-- Section Mangas du Moment -->
-  <section id="mangaSection" class="section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">LECTURES</p>
-        <h2>📚 Mangas recommandés</h2>
-      </div>
-    </div>
-    <div id="mangaGrid" class="grid"></div>
-  </section>
-</main>
-
-<!-- Bottom Navigation Bar pour mobile -->
-<nav class="bottom-nav">
-  <a href="#home" class="bottom-nav-item active" data-target="home">
-    <span class="icon">🏠</span>
-    <span>Accueil</span>
-  </a>
-  <a href="#discover" class="bottom-nav-item" data-target="discover">
-    <span class="icon">🔎</span>
-    <span>Explorer</span>
-  </a>
-  <a href="#animeSection" class="bottom-nav-item" data-target="animeSection">
-    <span class="icon">🔥</span>
-    <span>Tendances</span>
-  </a>
-  <a href="#profileSection" class="bottom-nav-item" data-target="profileSection">
-    <span class="icon">👤</span>
-    <span>Mon Espace</span>
-  </a>
-</nav>
-
-<!-- Modale d'authentification -->
-<div id="authModal" class="modal hidden">
-  <div class="modal-card">
-    <button class="close" data-close>×</button>
-    <h2 id="authTitle">Connexion</h2>
-    <input id="email" type="email" placeholder="Email" autocomplete="email">
-    <input id="password" type="password" placeholder="Mot de passe" autocomplete="current-password">
-    <button id="authAction" class="primary">Se connecter</button>
-    <button id="switchAuth" class="link">Créer un compte</button>
-    <p id="authMsg" class="error-msg"></p>
-  </div>
-</div>
-
-<!-- Modale Détail Oeuvre v0.9 (avec Favoris & Suivi Progression) -->
-<div id="detailModal" class="modal hidden">
-  <div class="detail-card">
-    <button class="close" data-close>×</button>
-    <div id="detailHero" class="detail-hero"></div>
-    <div class="detail-body">
-      <div class="detail-top">
-        <div>
-          <p class="eyebrow" id="detailType">ANIME</p>
-          <h2 id="detailTitle">Titre de l'anime</h2>
+        <div class="filter-group">
+          <label>Statut</label>
+          <select id="filterStatus" class="input-field">
+            <option value="">Tous les statuts</option>
+            <option value="RELEASING">En cours</option>
+            <option value="FINISHED">Terminé</option>
+            <option value="NOT_YET_RELEASED">À venir</option>
+          </select>
         </div>
-        <div class="detail-top-right">
-          <button id="favBtn" class="fav-toggle-btn" title="Ajouter aux favoris">🤍</button>
-          <span id="detailScore" class="score">--</span>
+
+        <div class="filter-group">
+          <label>Trier par</label>
+          <select id="filterSort" class="input-field">
+            <option value="POPULARITY_DESC">Les plus populaires</option>
+            <option value="SCORE_DESC">Mieux notés</option>
+            <option value="TRENDING_DESC">Tendances actuelles</option>
+            <option value="START_DATE_DESC">Plus récents</option>
+          </select>
         </div>
       </div>
-      <p id="detailDesc" class="muted"></p>
-      <div id="detailMeta" class="chips"></div>
 
-      <!-- Progression Tracker Box v0.9 -->
-      <div id="progressTrackerBox" class="tracker-box">
-        <div class="tracker-head">
-          <span class="tracker-label" id="trackerUnitLabel">📺 Progression</span>
-          <b id="trackerCounter">0 / ?</b>
-        </div>
-        <div class="progress"><i id="trackerBar"></i></div>
-        <div class="tracker-controls">
-          <button id="progMinusBtn" class="ghost small">− 1</button>
-          <button id="progPlusBtn" class="primary small">+ 1 Avancer</button>
-          <button id="progCompleteBtn" class="ghost small">✓ Terminé</button>
-        </div>
+      <div class="bottom-sheet-footer">
+        <button id="btnResetFilters" class="btn btn-outline">Réinitialiser</button>
+        <button id="btnApplyFilters" class="btn btn-primary">Appliquer les filtres</button>
       </div>
-      
-      <!-- Conteneur Trailer Officiel YouTube -->
-      <div id="detailTrailerBox" class="trailer-box hidden">
-        <h4>🎬 Bande-annonce officielle</h4>
-        <div id="trailerContainer" class="video-responsive"></div>
-      </div>
-
-      <!-- Saisons Anime-Sama -->
-      <div id="seasonBox" class="season-box hidden">
-        <h3>📺 Correspondance Anime-Sama</h3>
-        <div id="seasonList"></div>
-      </div>
-
-      <div class="detail-actions">
-        <button id="detailSessionBtn" class="primary">⏱️ Lancer une session (+XP)</button>
-        <button id="detailCloseBtn" class="ghost" data-close>Fermer</button>
-      </div>
-      <p id="detailNote" class="muted tiny"></p>
     </div>
   </div>
-</div>
 
-<!-- Modale Session XP -->
-<div id="watchModal" class="modal hidden">
-  <div class="modal-card">
-    <button class="close" data-close>×</button>
-    <p class="eyebrow" id="mediaType">ANIME</p>
-    <h2 id="mediaTitle">Titre</h2>
-    <div class="timer-box">
-      <span class="timer-icon">⏱️</span>
-      <b id="timer">00:00</b>
+  <!-- Modal Auth (Connexion / Inscription) -->
+  <div id="authModal" class="modal">
+    <div class="modal-backdrop" id="authModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="logo">
+          <span class="logo-badge">OW</span>
+          <span class="logo-text">Otaku<span class="logo-accent">World</span></span>
+        </div>
+        <button id="btnCloseAuthModal" class="btn-icon">✕</button>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="tabAuthLogin" class="auth-tab active">Connexion</button>
+        <button id="tabAuthRegister" class="auth-tab">Inscription</button>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <div id="authUsernameGroup" class="form-group" style="display: none;">
+          <label for="authUsernameInput">Pseudo</label>
+          <input type="text" id="authUsernameInput" class="input-field" placeholder="Ex: ErenYeager22">
+        </div>
+
+        <div class="form-group">
+          <label for="authEmailInput">Adresse Email</label>
+          <input type="email" id="authEmailInput" class="input-field" placeholder="votre@email.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="authPasswordInput">Mot de passe</label>
+          <input type="password" id="authPasswordInput" class="input-field" placeholder="••••••••" required>
+        </div>
+
+        <div id="authErrorMessage" class="auth-error" style="display: none;"></div>
+
+        <button type="submit" id="btnSubmitAuth" class="btn btn-primary btn-full btn-lg">Se connecter</button>
+      </form>
     </div>
-    <p class="muted tiny">1 minute passée = 1 XP gagné ! Les points sont automatiquement ajoutés à ton profil à la fermeture.</p>
-    <button class="primary" data-close>Terminer la session</button>
   </div>
-</div>
 
-<footer>
-  <p>OTAKU-WORLD v0.9 • Synchronisation Cloud Firebase • AniList & MangaDex</p>
-  <small>Conçu pour une expérience mobile et Android optimale</small>
-</footer>
+  <!-- Toast de notification -->
+  <div id="toastNotification" class="toast"></div>
 
-<script type="module" src="app.js"></script>
+  <!-- Scripts Firebase & Application -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
