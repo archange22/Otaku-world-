@@ -1,17 +1,47 @@
 {
   "rules": {
+    ".read": false,
+    ".write": false,
     "users": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'moderator')",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+        ".write": "auth != null && auth.uid === $uid",
+        "role": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'owner'"
+        }
       }
     },
     "comments": {
-      "$content": {
-        ".read": true,
-        "$comment": {
-          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+      "$contentId": {
+        "$commentId": {
+          ".read": true,
+          ".write": "auth != null && ( (!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && (data.child('uid').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'owner' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'moderator')) )",
+          ".validate": "newData.hasChildren(['uid','username','text','createdAt'])"
         }
+      }
+    },
+    "favorites": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "history": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "progress": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "watchlist": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     }
   }
