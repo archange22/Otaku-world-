@@ -322,7 +322,6 @@ export class MangaDexAdapter {
       total: dataEn.total
     };
   }
-}
 
 
   /**
@@ -367,4 +366,6 @@ export class MangaDexAdapter {
   }
 
 // Instance singleton exportée
+}
+
 export const mangadexAdapter = new MangaDexAdapter();
