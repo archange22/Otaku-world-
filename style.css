@@ -779,3 +779,96 @@ body {
     transform: none !important;
   }
 }
+
+
+/* === Bannière Hors-Ligne enrichie & Bouton Réessayer === */
+.offline-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-banner-retry {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-banner-retry:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.btn-banner-retry:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* === Alerte In-App (Repli si notifications système refusées/indisponibles) === */
+.in-app-alert {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  max-width: 380px;
+  width: calc(100% - 40px);
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(139, 92, 246, 0.4);
+  border-radius: 12px;
+  padding: 14px 16px;
+  z-index: 9999;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.in-app-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.in-app-alert-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.in-app-alert-text {
+  flex: 1;
+}
+
+.in-app-alert-text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.in-app-alert-text p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Notice permission notifications */
+.notif-notice.notice-granted {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.notif-notice.notice-fallback {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

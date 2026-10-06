@@ -11,7 +11,23 @@
 </head>
 <body>
   <a href="#mainApp" class="skip-link">Aller au contenu principal</a>
-  <div id="offlineBanner" class="offline-banner" hidden role="status" aria-live="polite">📡 Mode hors-ligne actif — Vos données locales restent accessibles et vos modifications seront synchronisées dès le retour du réseau.</div>
+  <div id="offlineBanner" class="offline-banner" hidden role="status" aria-live="polite">
+    <div class="offline-banner-content">
+      <span id="offlineBannerText">📡 Mode hors-ligne actif — Vos données locales restent accessibles.</span>
+      <button type="button" id="btnRetrySync" class="btn-banner-retry" hidden>🔄 Réessayer la synchronisation (<span id="syncFailedCount">0</span>)</button>
+    </div>
+  </div>
+  <!-- Bannière d'alerte in-app pour les rappels d'épisodes sans permission système -->
+  <div id="inAppReminderAlert" class="in-app-alert" hidden role="alert" aria-live="assertive">
+    <div class="in-app-alert-content">
+      <span class="in-app-alert-icon">🔔</span>
+      <div class="in-app-alert-text">
+        <strong id="inAppReminderTitle">Épisode disponible !</strong>
+        <p id="inAppReminderDesc">Votre épisode vient de sortir en simulcast.</p>
+      </div>
+      <button type="button" id="btnCloseInAppAlert" class="btn-icon" aria-label="Fermer l'alerte">&times;</button>
+    </div>
+  </div>
 
 <div id="splash">
   <div class="splash-inner">
@@ -396,6 +412,7 @@
         <button class="btn-icon" id="btnCloseReminderModal" aria-label="Fermer le dialogue">&times;</button>
       </div>
       <p id="reminderAnimeName" style="color:var(--text-muted);font-size:13px;margin-bottom:14px;"></p>
+      <div id="notifPermissionNotice" class="notif-notice" style="margin-bottom:12px;padding:10px;border-radius:8px;font-size:12px;"></div>
       <div class="form-group">
         <label for="reminderDelaySelect">M'alerter avant la diffusion :</label>
         <select id="reminderDelaySelect" class="form-select">
