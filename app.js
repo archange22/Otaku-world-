@@ -20,7 +20,8 @@ const state = {
     sort: 'TRENDING_DESC',
     status: 'ALL',
     genre: '',
-    items: []
+    items: [],
+    type: 'manga'
   },
   heroMedia: [],
   heroIndex: 0,
@@ -117,12 +118,17 @@ function cardHTML(m) {
     </article>`;
 }
 
-function bindCards(container, list) {
+function bindCards(container, list = []) {
   if (!container) return;
   container.querySelectorAll('.card').forEach(card => {
     card.addEventListener('click', () => {
       const id = card.dataset.id;
-      window.openMangaDetail(id);
+      const found = (list || []).find(item => String(item.id) === String(id));
+      if (found && (found.isAnime || found.mediaType === 'ANIME')) {
+        window.openAnimeDetail(found);
+      } else {
+        window.openMangaDetail(id);
+      }
     });
   });
 }
@@ -473,7 +479,138 @@ async function checkFavoriteChapterAlerts() {
 /* ==========================================================
    CATALOGUE 100% MANGA AVEC FILTRES, RECHERCHE & PAGINATION
    ========================================================== */
+
+/* ==========================================================
+   ANILIST GRAPHQL ADAPTER POUR LES ANIMES
+   ========================================================== */
+async function fetchAniListCatalog({ page = 1, perPage = 24, search = '', sort = 'TRENDING_DESC', status = null } = {}) {
+  const query = `query($page: Int, $perPage: Int, $search: String, $sort: [MediaSort], $status: MediaStatus) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { hasNextPage total }
+      media(type: ANIME, search: $search, sort: $sort, status: $status, isAdult: false) {
+        id
+        title { romaji english native }
+        coverImage { large extraLarge }
+        bannerImage
+        format
+        episodes
+        duration
+        status
+        seasonYear
+        averageScore
+        description
+        genres
+        trailer { id site }
+      }
+    }
+  }`;
+
+  const variables = { page, perPage };
+  if (search && search.trim()) {
+    variables.search = search.trim();
+    variables.sort = ['SEARCH_MATCH'];
+  } else {
+    variables.sort = [sort];
+  }
+  if (status && status !== 'ALL') {
+    variables.status = status;
+  }
+
+  const res = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ query, variables })
+  });
+
+  if (!res.ok) throw new Error('Erreur AniList: ' + res.status);
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0]?.message || 'Erreur AniList');
+
+  const p = json.data.Page;
+  return {
+    items: p.media.map(m => ({
+      id: m.id,
+      mediaType: 'ANIME',
+      format: m.format || 'ANIME',
+      title: { romaji: m.title.romaji || m.title.english, english: m.title.english, native: m.title.native },
+      coverImage: { large: m.coverImage.large, extraLarge: m.coverImage.extraLarge || m.coverImage.large },
+      bannerImage: m.bannerImage,
+      averageScore: m.averageScore,
+      seasonYear: m.seasonYear,
+      episodes: m.episodes,
+      duration: m.duration,
+      status: m.status,
+      description: m.description,
+      genres: m.genres || [],
+      trailer: m.trailer,
+      isAnime: true
+    })),
+    total: p.pageInfo.total,
+    hasMore: p.pageInfo.hasNextPage
+  };
+}
+
+window.openAnimeDetail = function(anime) {
+  const detailView = $('#viewDetail');
+  if (!detailView) return;
+  window.location.hash = `#/anime/${anime.id}`;
+
+  const genresHtml = (anime.genres || []).map(g => `<span class="chip active">${g}</span>`).join('');
+  const cleanDesc = (anime.description || 'Aucune description disponible.').replace(/<[^>]*>?/gm, '');
+
+  let trailerHtml = '';
+  if (anime.trailer && anime.trailer.site === 'youtube') {
+    trailerHtml = `
+      <div style="margin-top:24px;">
+        <h3 style="color:#fff;margin-bottom:12px;">Bande-annonce officielle</h3>
+        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;">
+          <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" src="https://www.youtube.com/embed/${anime.trailer.id}" allowfullscreen></iframe>
+        </div>
+      </div>
+    `;
+  }
+
+  detailView.innerHTML = `
+    <div class="detail-container" style="max-width:960px;margin:0 auto;padding:20px 16px;">
+      <button type="button" class="btn-secondary" onclick="window.history.back()" style="margin-bottom:16px;">← Retour</button>
+      <div class="detail-hero" style="display:flex;gap:24px;flex-wrap:wrap;">
+        <img src="${anime.coverImage?.extraLarge || anime.coverImage?.large}" alt="${anime.title.romaji}" style="width:200px;border-radius:12px;object-fit:cover;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <div style="flex:1;min-width:260px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span class="card-format" style="position:static;padding:4px 8px;">${anime.format || 'ANIME'}</span>
+            ${anime.averageScore ? `<span class="card-score" style="position:static;">★ ${(anime.averageScore / 10).toFixed(1)}</span>` : ''}
+            <span style="color:#888;font-size:0.85rem;">Statut: ${anime.status || 'N/A'}</span>
+            ${anime.episodes ? `<span style="color:#888;font-size:0.85rem;">• ${anime.episodes} épisodes</span>` : ''}
+          </div>
+          <h1 style="color:#fff;font-size:1.8rem;margin-bottom:12px;">${anime.title.romaji}</h1>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">${genresHtml}</div>
+          <p style="color:#ccc;line-height:1.6;font-size:0.95rem;">${cleanDesc}</p>
+        </div>
+      </div>
+      ${trailerHtml}
+    </div>
+  `;
+
+  detailView.hidden = false;
+  $('.view-page').forEach(v => { if (v.id !== 'viewDetail') v.hidden = true; });
+};
+
 function initCatalogEvents() {
+  $('#catTabManga')?.addEventListener('click', () => {
+    $('#catTabManga').classList.add('active');
+    $('#catTabAnime')?.classList.remove('active');
+    state.catalog.type = 'manga';
+    state.catalog.page = 1;
+    fetchCatalog(true);
+  });
+
+  $('#catTabAnime')?.addEventListener('click', () => {
+    $('#catTabAnime').classList.add('active');
+    $('#catTabManga')?.classList.remove('active');
+    state.catalog.type = 'anime';
+    state.catalog.page = 1;
+    fetchCatalog(true);
+  });
   const searchInput = $('#catSearchInput');
   const clearBtn = $('#catSearchClear');
 
@@ -575,39 +712,49 @@ async function fetchCatalog(reset = false) {
   if (btnPrev) btnPrev.disabled = state.catalog.page <= 1;
 
   try {
-    let mdSort = 'followedCount';
-    let mdSortOrder = 'desc';
-    if (state.catalog.sort === 'SCORE_DESC') mdSort = 'rating';
-    else if (state.catalog.sort === 'START_DATE_DESC') mdSort = 'latest';
-    else if (state.catalog.sort === 'TITLE_ROMAJI') { mdSort = 'title'; mdSortOrder = 'asc'; }
+        let mangaItems = [];
+    if (state.catalog.type === 'anime') {
+      const animeRes = await fetchAniListCatalog({
+        page: state.catalog.page,
+        perPage: 24,
+        search: state.catalog.query,
+        sort: state.catalog.sort === 'SCORE_DESC' ? 'SCORE_DESC' : 'TRENDING_DESC',
+        status: state.catalog.status === 'RELEASING' ? 'RELEASING' : (state.catalog.status === 'FINISHED' ? 'FINISHED' : null)
+      });
+      mangaItems = animeRes.items;
+      state.catalog.hasNextPage = animeRes.hasMore;
+      $('#catalogCount').textContent = `${animeRes.total ? animeRes.total.toLocaleString('fr-FR') : mangaItems.length} animes trouvés`;
+    } else {
+      let mdSort = 'followedCount';
+      let mdSortOrder = 'desc';
+      if (state.catalog.sort === 'SCORE_DESC') mdSort = 'rating';
+      else if (state.catalog.sort === 'START_DATE_DESC') mdSort = 'latest';
+      else if (state.catalog.sort === 'TITLE_ROMAJI') { mdSort = 'title'; mdSortOrder = 'asc'; }
 
-    let langFilter = null;
-    const fmt = state.catalog.format || 'ALL';
-    if (fmt === 'MANGA') langFilter = 'ja';
-    else if (fmt === 'MANHWA') langFilter = 'ko';
-    else if (fmt === 'MANHUA') langFilter = 'zh';
+      let langFilter = null;
+      const fmt = state.catalog.format || 'ALL';
+      if (fmt === 'MANGA') langFilter = 'ja';
+      else if (fmt === 'MANHWA') langFilter = 'ko';
+      else if (fmt === 'MANHUA') langFilter = 'zh';
 
-    let statusParam = [];
-    if (state.catalog.status === 'RELEASING') statusParam = ['ongoing'];
-    else if (state.catalog.status === 'FINISHED') statusParam = ['completed'];
+      let statusParam = [];
+      if (state.catalog.status === 'RELEASING') statusParam = ['ongoing'];
+      else if (state.catalog.status === 'FINISHED') statusParam = ['completed'];
 
-    const mangaRes = await mangadexAdapter.getCatalogue({
-      query: state.catalog.query || '',
-      sort: mdSort,
-      sortOrder: mdSortOrder,
-      originalLanguage: langFilter,
-      status: statusParam,
-      page: state.catalog.page,
-      limit: 24
-    });
+      const mangaRes = await mangadexAdapter.getCatalogue({
+        query: state.catalog.query || '',
+        sort: mdSort,
+        sortOrder: mdSortOrder,
+        originalLanguage: langFilter,
+        status: statusParam,
+        page: state.catalog.page,
+        limit: 24
+      });
 
-    const mangaItems = (mangaRes.items || []).map(formatMangaItem);
-
-    state.catalog.hasNextPage = mangaRes.hasMore;
-    const btnNext = $('#btnCatalogNextPage');
-    if (btnNext) btnNext.disabled = !mangaRes.hasMore;
-
-    $('#catalogCount').textContent = `${mangaRes.total ? mangaRes.total.toLocaleString('fr-FR') : mangaItems.length} mangas trouvés`;
+      mangaItems = (mangaRes.items || []).map(formatMangaItem);
+      state.catalog.hasNextPage = mangaRes.hasMore;
+      $('#catalogCount').textContent = `${mangaRes.total ? mangaRes.total.toLocaleString('fr-FR') : mangaItems.length} mangas trouvés`;
+    }
 
     if (reset) {
       state.catalog.items = mangaItems;
