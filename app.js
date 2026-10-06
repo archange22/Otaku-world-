@@ -1712,17 +1712,75 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
     currentMangaState.totalPages = pagesData.total;
     $('#readerPageCounter').textContent = `Page ${initialPage} / ${pagesData.total}`;
 
-    // Rendu en défilement vertical (Webtoon)
+    // Rendu en défilement vertical (Webtoon) avec états de chargement, retry et carte fin de chapitre
     const pagesFrag = document.createDocumentFragment();
     pagesData.pages.forEach((p, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'reader-page-wrap';
+      wrap.dataset.page = idx + 1;
+
+      const loader = document.createElement('div');
+      loader.className = 'reader-page-loading';
+      loader.innerHTML = '<div class="spinner"></div><p>Page ' + (idx + 1) + ' en cours de chargement...</p>';
+      wrap.appendChild(loader);
+
       const img = document.createElement('img');
       img.className = 'reader-page-img';
       img.loading = idx < 3 ? 'eager' : 'lazy';
       img.dataset.page = idx + 1;
-      img.src = p.url;
       img.alt = `Page ${idx + 1}`;
-      pagesFrag.appendChild(img);
+      img.hidden = true;
+
+      const attachSrc = () => {
+        img.src = p.url;
+      };
+      attachSrc();
+
+      img.addEventListener('load', () => {
+        img.hidden = false;
+        loader.remove();
+        errBox.remove();
+      });
+
+      const errBox = document.createElement('div');
+      errBox.className = 'reader-page-error';
+      errBox.hidden = true;
+      errBox.innerHTML = '<p>⚠️ Impossible de charger la page ' + (idx + 1) + ' depuis MangaDex.</p><button type="button" class="btn-reader-nav">🔄 Réessayer</button>';
+      errBox.querySelector('button').addEventListener('click', () => {
+        errBox.hidden = true;
+        loader.hidden = false;
+        loader.innerHTML = '<div class="spinner"></div><p>Nouvelle tentative...</p>';
+        attachSrc();
+      });
+
+      img.addEventListener('error', () => {
+        loader.remove();
+        errBox.hidden = false;
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(errBox);
+      pagesFrag.appendChild(wrap);
     });
+
+    // Carte fin de chapitre : proposition d'ouvrir le chapitre suivant sans quitter le lecteur
+    const hasNextChapter = currentMangaState.currentChapterIndex > 0;
+    const endCard = document.createElement('div');
+    endCard.className = 'reader-end-card';
+    if (hasNextChapter) {
+      const nextCh = currentMangaState.chapters[currentMangaState.currentChapterIndex - 1];
+      endCard.innerHTML = '<p>🎉 Chapitre terminé !</p><button type="button" class="btn-primary" id="btnOpenNextChapter">📖 Ouvrir le chapitre suivant →</button>';
+      pagesFrag.appendChild(endCard);
+      setTimeout(() => {
+        $('#btnOpenNextChapter')?.addEventListener('click', () => {
+          if (currentMangaState.manga) openMangaReader(currentMangaState.manga.id, nextCh.id, 1);
+        });
+      }, 0);
+    } else {
+      endCard.innerHTML = '<p>🏁 Vous avez atteint le dernier chapitre disponible.</p>';
+      pagesFrag.appendChild(endCard);
+    }
+
     $('#readerPagesVertical').appendChild(pagesFrag);
 
     // Défilement automatique vers la page de reprise
@@ -1774,9 +1832,16 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
 // Initialisation des contrôles du lecteur manga
 document.addEventListener('DOMContentLoaded', () => {
   $('#btnCloseReader')?.addEventListener('click', () => {
+    saveCurrentReaderProgress();
     const readerView = $('#viewMangaReader');
     if (readerView) readerView.hidden = true;
   });
+
+  // Sauvegarde de secours quand l'onglet passe en arrière-plan ou se ferme
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveCurrentReaderProgress();
+  });
+  window.addEventListener('pagehide', () => saveCurrentReaderProgress());
 
   $('#btnToggleDataSaver')?.addEventListener('click', () => {
     currentMangaState.dataSaver = !currentMangaState.dataSaver;
@@ -1815,3 +1880,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chId && currentMangaState.manga) openMangaReader(currentMangaState.manga.id, chId, 1);
   });
 });
+
+
+/* ==========================================================
+   SAUVEGARDE DE PROGRESSION RENFORCÉE (lecteur manga)
+   ========================================================== */
+function getReaderVisiblePage() {
+  const container = $('#readerContainer');
+  if (!container) return 1;
+  const containerTop = container.getBoundingClientRect().top;
+  for (const wrap of $$('#readerPagesVertical .reader-page-wrap')) {
+    const rect = wrap.getBoundingClientRect();
+    if (rect.bottom >= containerTop + 100) {
+      return parseInt(wrap.dataset.page, 10) || 1;
+    }
+  }
+  return 1;
+}
+
+function saveCurrentReaderProgress() {
+  const ch = currentMangaState.chapters[currentMangaState.currentChapterIndex];
+  if (!currentMangaState.manga || !ch) return;
+  saveMangaProgress(currentMangaState.manga.id, {
+    chapterId: ch.id,
+    chapterNumber: ch.chapter || '1',
+    page: getReaderVisiblePage(),
+    mangaTitle: currentMangaState.manga.title?.display || 'Manga'
+  });
+}
