@@ -337,6 +337,42 @@
     </div>
     <div id="detailContainer"></div>
   </section>
+
+  <!-- Lecteur Manga Vertical / Webtoon -->
+  <section id="viewMangaReader" class="view-page manga-reader-page" hidden>
+    <header class="reader-header" id="readerHeader">
+      <div class="reader-header-left">
+        <button type="button" class="icon-btn" id="btnCloseReader" aria-label="Quitter le lecteur">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="reader-info">
+          <h2 class="reader-manga-title" id="readerMangaTitle">Chargement...</h2>
+          <span class="reader-chapter-title" id="readerChapterTitle">Chapitre</span>
+        </div>
+      </div>
+      <div class="reader-header-right">
+        <button type="button" class="chip chip-reader" id="btnToggleDataSaver" title="Activer/Désactiver le mode économie de données">
+          <span id="dataSaverIndicator">⚡ Haute Qualité</span>
+        </button>
+        <div class="reader-page-counter" id="readerPageCounter">Page 1 / 1</div>
+      </div>
+    </header>
+
+    <div class="reader-container" id="readerContainer">
+      <div class="reader-loading" id="readerLoading">
+        <div class="spinner"></div>
+        <p>Chargement des pages MangaDex...</p>
+      </div>
+      <div class="reader-pages-vertical" id="readerPagesVertical"></div>
+    </div>
+
+    <footer class="reader-footer" id="readerFooter">
+      <button type="button" class="btn-reader-nav" id="btnPrevChapter">← Chapitre précédent</button>
+      <select id="readerChapterSelect" class="reader-select"></select>
+      <button type="button" class="btn-reader-nav" id="btnNextChapter">Chapitre suivant →</button>
+    </footer>
+  </section>
+
 </main>
 
 <!-- Barre de navigation inférieure Mobile (Bottom Nav) -->
