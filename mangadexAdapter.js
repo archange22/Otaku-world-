@@ -266,67 +266,84 @@ export class MangaDexAdapter {
    * Récupère la liste des chapitres avec logique intelligente FR -> EN
    */
   async getFeed(mangaId, { limit = 100, offset = 0 } = {}) {
-    // 1. Tenter de charger les chapitres FR
-    const paramsFr = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      'translatedLanguage[]': 'fr',
-      'order[chapter]': 'desc',
-      'includes[]': 'scanlation_group'
-    });
-
-    const resFr = await fetch(`${this.apiBase}/manga/${mangaId}/feed?${paramsFr.toString()}`);
-    let dataFr = resFr.ok ? await resFr.json() : { data: [], total: 0 };
-
-    if (dataFr.data && dataFr.data.length > 0) {
-      return {
-        chapters: dataFr.data.map(ch => ({
-          id: ch.id,
-          chapter: ch.attributes?.chapter || '1',
-          title: ch.attributes?.title || `Chapitre ${ch.attributes?.chapter || ''}`,
-          language: 'fr',
-          isFallbackLanguage: false,
-          publishAt: ch.attributes?.publishAt || ch.attributes?.createdAt,
-          pages: ch.attributes?.pages || 0,
-          externalUrl: ch.attributes?.externalUrl || null
-        })),
-        language: 'fr',
-        total: dataFr.total
-      };
-    }
-
-    // 2. Repli vers EN si aucun chapitre FR n'est disponible
-    const paramsEn = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      'translatedLanguage[]': 'en',
-      'order[chapter]': 'desc',
-      'includes[]': 'scanlation_group'
-    });
-
-    const resEn = await fetch(`${this.apiBase}/manga/${mangaId}/feed?${paramsEn.toString()}`);
-    const dataEn = resEn.ok ? await resEn.json() : { data: [], total: 0 };
-
-    return {
-      chapters: (dataEn.data || []).map(ch => ({
+    const parseChapters = (list, lang, isFallback) => {
+      return (list || []).map(ch => ({
         id: ch.id,
         chapter: ch.attributes?.chapter || '1',
-        title: ch.attributes?.title || `Chapter ${ch.attributes?.chapter || ''}`,
-        language: 'en',
-        isFallbackLanguage: true,
+        title: ch.attributes?.title || ,
+        language: lang,
+        isFallbackLanguage: isFallback,
         publishAt: ch.attributes?.publishAt || ch.attributes?.createdAt,
         pages: ch.attributes?.pages || 0,
-        externalUrl: ch.attributes?.externalUrl || null
-      })),
-      language: 'en',
-      total: dataEn.total
+        externalUrl: ch.attributes?.externalUrl || null,
+        isExternal: Boolean(ch.attributes?.externalUrl),
+        isReadable: !ch.attributes?.externalUrl && (ch.attributes?.pages || 0) > 0
+      }));
     };
+
+    // 1. Tenter FR
+    try {
+      const paramsFr = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        'translatedLanguage[]': 'fr',
+        'order[chapter]': 'desc',
+        'includes[]': 'scanlation_group'
+      });
+      const resFr = await fetch();
+      if (resFr.ok) {
+        const dataFr = await resFr.json();
+        if (dataFr.data && dataFr.data.length > 0) {
+          const chapters = parseChapters(dataFr.data, 'fr', false);
+          return { chapters, language: 'fr', total: dataFr.total };
+        }
+      }
+    } catch (e) {
+      console.warn('[MangaDexAdapter] Erreur feed FR:', e);
+    }
+
+    // 2. Repli EN
+    try {
+      const paramsEn = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        'translatedLanguage[]': 'en',
+        'order[chapter]': 'desc',
+        'includes[]': 'scanlation_group'
+      });
+      const resEn = await fetch();
+      if (resEn.ok) {
+        const dataEn = await resEn.json();
+        if (dataEn.data && dataEn.data.length > 0) {
+          const chapters = parseChapters(dataEn.data, 'en', true);
+          return { chapters, language: 'en', total: dataEn.total };
+        }
+      }
+    } catch (e) {
+      console.warn('[MangaDexAdapter] Erreur feed EN:', e);
+    }
+
+    // 3. Repli général toutes langues si aucun chapitre FR/EN
+    try {
+      const paramsAll = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        'order[chapter]': 'desc',
+        'includes[]': 'scanlation_group'
+      });
+      const resAll = await fetch();
+      if (resAll.ok) {
+        const dataAll = await resAll.json();
+        const chapters = parseChapters(dataAll.data, 'multi', true);
+        return { chapters, language: 'multi', total: dataAll.total };
+      }
+    } catch (e) {
+      console.warn('[MangaDexAdapter] Erreur feed multi:', e);
+    }
+
+    return { chapters: [], language: 'fr', total: 0 };
   }
 
-
-  /**
-   * Récupère les détails complets d'un manga par son ID
-   */
   async getMangaDetails(mangaId) {
     const url = `${this.apiBase}/manga/${mangaId}?includes[]=cover_art&includes[]=author&includes[]=artist`;
     const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
