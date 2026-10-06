@@ -1,4 +1,219 @@
 
+document.addEventListener('click', (e) => {
+  const reminderBtn = e.target.closest('.btn-reminder');
+  if (reminderBtn) {
+    e.stopPropagation();
+    const airingId = reminderBtn.dataset.airingId;
+    const title = reminderBtn.dataset.title;
+    const ep = reminderBtn.dataset.ep;
+    const time = parseInt(reminderBtn.dataset.time, 10);
+    const saved = getSavedReminders();
+    if (saved[airingId]) {
+      removeReminder(airingId);
+      reminderBtn.classList.remove('active');
+      reminderBtn.innerHTML = '⏰ Me rappeler';
+      toast('Rappel supprimé');
+    } else {
+      openReminderModal(airingId, title, ep, time);
+    }
+    return;
+  }
+
+  if (e.target.id === 'btnCloseReminderModal' || e.target.id === 'btnCancelReminder') {
+    const modal = $('#reminderModal');
+    if (modal) modal.hidden = true;
+    activeReminderItem = null;
+  }
+
+  if (e.target.id === 'btnConfirmReminder' && activeReminderItem) {
+    const delay = parseInt($('#reminderDelaySelect')?.value || '60', 10);
+    saveReminder(activeReminderItem.airingId, {
+      ...activeReminderItem,
+      delayMinutes: delay,
+      createdAt: Date.now()
+    });
+    const modal = $('#reminderModal');
+    if (modal) modal.hidden = true;
+    toast(`🔔 Rappel programmé ${delay >= 60 ? (delay/60) + 'h' : delay + 'min'} avant l\'épisode !`);
+    renderFilteredPlanning();
+    activeReminderItem = null;
+  }
+});
+
+
+// Gestion des rappels d'épisodes et filtres de planning
+let activeReminderItem = null;
+
+function getSavedReminders() {
+  try {
+    return JSON.parse(localStorage.getItem(REMINDERS_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveReminder(airingId, data) {
+  const reminders = getSavedReminders();
+  reminders[airingId] = data;
+  localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+}
+
+function removeReminder(airingId) {
+  const reminders = getSavedReminders();
+  delete reminders[airingId];
+  localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+}
+
+function openReminderModal(airingId, animeTitle, episodeNum, airingAt) {
+  activeReminderItem = { airingId, animeTitle, episodeNum, airingAt };
+  const modal = $('#reminderModal');
+  const nameEl = $('#reminderAnimeName');
+  if (nameEl) nameEl.textContent = `${animeTitle} — Épisode ${episodeNum}`;
+  if (modal) modal.hidden = false;
+  
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+// Listeners pour les filtres du planning
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'planningSeasonFilter' || e.target.id === 'planningPlatformFilter') {
+    renderFilteredPlanning();
+  }
+});
+
+function renderFilteredPlanning() {
+  const grid = $('#planningGrid');
+  if (!grid || !window.currentPlanningSchedule) return;
+  
+  const seasonVal = $('#planningSeasonFilter')?.value || 'ALL';
+  const platformVal = $('#planningPlatformFilter')?.value || 'ALL';
+
+  let list = window.currentPlanningSchedule;
+  if (seasonVal !== 'ALL') {
+    list = list.filter(item => (item.media?.season || '').toUpperCase() === seasonVal);
+  }
+  if (platformVal !== 'ALL') {
+    list = list.filter(item => {
+      const sites = (item.media?.externalLinks || []).map(l => (l.site || '').toLowerCase());
+      return sites.some(s => s.includes(platformVal.toLowerCase()));
+    });
+  }
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Aucun épisode ne correspond aux filtres sélectionnés.</div>';
+    return;
+  }
+
+  const savedReminders = getSavedReminders();
+
+  grid.innerHTML = list.map(item => {
+    const m = item.media;
+    const title = m.title.romaji || m.title.english || 'Titre';
+    const timeStr = new Date(item.airingAt * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const isReminded = !!savedReminders[item.id];
+
+    return `
+      <div class="planning-card" data-id="${m.id}" tabindex="0" role="article" aria-label="${title}, Épisode ${item.episode} à ${timeStr}">
+        <span class="planning-time">🕒 ${timeStr}</span>
+        <div class="planning-poster">
+          <img src="${m.coverImage.large || m.coverImage.medium}" alt="${title}" loading="lazy">
+        </div>
+        <div class="planning-info">
+          <h4>${title}</h4>
+          <span class="planning-ep">Épisode ${item.episode}</span>
+          <button type="button" class="btn-reminder ${isReminded ? 'active' : ''}" data-airing-id="${item.id}" data-title="${title.replace(/"/g, '&quot;')}" data-ep="${item.episode}" data-time="${item.airingAt}" aria-label="Rappel pour ${title}">
+            ${isReminded ? '🔔 Rappel actif' : '⏰ Me rappeler'}
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+
+// === GESTION HORS-LIGNE & SYNCHRONISATION MULTI-APPAREILS ===
+const OFFLINE_QUEUE_KEY = 'otaku_offline_queue';
+const OFFLINE_CACHE_PREFIX = 'otaku_cache_';
+const REMINDERS_KEY = 'otaku_episode_reminders';
+
+function saveToLocalCache(key, data) {
+  try {
+    localStorage.setItem(OFFLINE_CACHE_PREFIX + key, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Erreur stockage cache local:', e);
+  }
+}
+
+function getFromLocalCache(key, fallback = {}) {
+  try {
+    const raw = localStorage.getItem(OFFLINE_CACHE_PREFIX + key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function queueOfflineAction(action) {
+  try {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    queue.push({ ...action, timestamp: Date.now() });
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    toast('Action enregistrée hors ligne');
+  } catch (e) {
+    console.error('Erreur mise en file d\'attente hors-ligne:', e);
+  }
+}
+
+async function syncOfflineQueue() {
+  if (!navigator.onLine || !state.user) return;
+  try {
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!raw) return;
+    const queue = JSON.parse(raw);
+    if (!queue.length) return;
+
+    for (const item of queue) {
+      if (item.type === 'favorite') {
+        await set(ref(db, `favorites/${state.user.uid}/${item.id}`), item.value);
+      } else if (item.type === 'watchlist') {
+        await set(ref(db, `watchlist/${state.user.uid}/${item.id}`), item.value);
+      } else if (item.type === 'progress') {
+        await set(ref(db, `progress/${state.user.uid}/${item.id}`), item.value);
+      } else if (item.type === 'history') {
+        await set(ref(db, `history/${state.user.uid}/${item.id}`), item.value);
+      }
+    }
+    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    toast('✅ Synchronisation de vos données hors ligne terminée !');
+  } catch (err) {
+    console.warn('Échec synchronisation hors ligne:', err);
+  }
+}
+
+// Gestion des statuts de connexion
+window.addEventListener('online', () => {
+  const banner = document.getElementById('offlineBanner');
+  if (banner) banner.hidden = true;
+  toast('Connexion rétablie — Synchronisation en cours...');
+  syncOfflineQueue();
+});
+
+window.addEventListener('offline', () => {
+  const banner = document.getElementById('offlineBanner');
+  if (banner) banner.hidden = false;
+  toast('Mode hors-ligne activé — consultation de la bibliothèque disponible');
+});
+
+// Initialisation hors-ligne au démarrage
+document.addEventListener('DOMContentLoaded', () => {
+  if (!navigator.onLine) {
+    const banner = document.getElementById('offlineBanner');
+    if (banner) banner.hidden = false;
+  }
+});
+
+
 function setupCarouselAccessibility(scrollEl) {
   if (!scrollEl || scrollEl.dataset.carouselInit) return;
   scrollEl.dataset.carouselInit = 'true';

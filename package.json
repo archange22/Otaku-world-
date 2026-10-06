@@ -1,0 +1,13 @@
+{
+  "name": "otaku-world",
+  "version": "1.2.0",
+  "description": "Plateforme anime, manga et webtoon moderne et fluide",
+  "main": "server.js",
+  "scripts": {
+    "start": "serve -s . -l 5000",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a href="#mainApp" class="skip-link">Aller au contenu principal</a>
+  <div id="offlineBanner" class="offline-banner" hidden role="status" aria-live="polite">📡 Mode hors-ligne actif — Vos données locales restent accessibles et vos modifications seront synchronisées dès le retour du réseau.</div>
 
 <div id="splash">
   <div class="splash-inner">
@@ -210,6 +212,30 @@
     <div class="planning-header">
       <h1 class="page-title">Planning de diffusion (Simulcast)</h1>
       <p class="page-sub">Sorties d'épisodes en direct du Japon et simulcast officiel</p>
+      
+      <div class="planning-filters-row">
+        <div class="filter-group">
+          <label for="planningSeasonFilter" class="sr-only">Filtrer par saison</label>
+          <select id="planningSeasonFilter" class="planning-select" aria-label="Filtrer par saison">
+            <option value="ALL">Toutes les saisons</option>
+            <option value="FALL">Automne</option>
+            <option value="WINTER">Hiver</option>
+            <option value="SPRING">Printemps</option>
+            <option value="SUMMER">Été</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="planningPlatformFilter" class="sr-only">Filtrer par plateforme</label>
+          <select id="planningPlatformFilter" class="planning-select" aria-label="Filtrer par diffuseur">
+            <option value="ALL">Toutes les plateformes</option>
+            <option value="Crunchyroll">Crunchyroll</option>
+            <option value="Netflix">Netflix</option>
+            <option value="ADN">ADN</option>
+            <option value="Disney+">Disney+</option>
+          </select>
+        </div>
+      </div>
+
       <div class="days-tabs" id="planningDays">
         <button class="day-tab active" data-day="0">Aujourd'hui</button>
         <button class="day-tab" data-day="1">Demain</button>
@@ -361,5 +387,30 @@
 <div id="toasts"></div>
 
 <script type="module" src="app.js"></script>
+
+  <!-- Modal Rappel Épisode Planning -->
+  <div class="modal" id="reminderModal" hidden role="dialog" aria-modal="true" aria-labelledby="reminderModalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="reminderModalTitle">Configurer un rappel</h2>
+        <button class="btn-icon" id="btnCloseReminderModal" aria-label="Fermer le dialogue">&times;</button>
+      </div>
+      <p id="reminderAnimeName" style="color:var(--text-muted);font-size:13px;margin-bottom:14px;"></p>
+      <div class="form-group">
+        <label for="reminderDelaySelect">M'alerter avant la diffusion :</label>
+        <select id="reminderDelaySelect" class="form-select">
+          <option value="15">15 minutes avant</option>
+          <option value="30">30 minutes avant</option>
+          <option value="60" selected>1 heure avant</option>
+          <option value="1440">24 heures avant</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn-secondary" id="btnCancelReminder" style="flex:1;">Annuler</button>
+        <button class="btn-primary" id="btnConfirmReminder" style="flex:1;">Enregistrer le rappel</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
