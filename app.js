@@ -1,5 +1,5 @@
 import { auth, db } from './firebase.js';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { ref, get, set, remove, onValue } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
 
 /* ---------- État de l'application ---------- */
@@ -8,6 +8,7 @@ const state = {
   mediaId: null,
   user: null,
   library: { favorites: {}, watchlist: {}, history: {} },
+  progress: {},
   libTab: 'favorites',
   catalog: {
     page: 1,
@@ -480,6 +481,22 @@ async function loadPlanning(dayOffset = 0) {
   }
 }
 
+function updatePlanningTabs() {
+  const container = $('#planningDays');
+  if (!container) return;
+  const labels = ['Aujourd\'hui', 'Demain'];
+  const now = new Date();
+  container.innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    let label = labels[i];
+    if (!label) {
+      const dayName = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+      label = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+    }
+    return `<button class="day-tab ${i === state.planningDay ? 'active' : ''}" data-day="${i}">${label}</button>`;
+  }).join('');
+  updatePlanningTabs();
+}
 function initPlanningEvents() {
   $$('#planningDays .day-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -624,6 +641,9 @@ function watchLibraryData() {
       if (state.currentRoute === 'library') renderLibrary();
     });
   });
+  onValue(ref(db, `progress/${uid}`), snap => {
+    state.progress = snap.val() || {};
+  });
 }
 
 function updateLibraryCounts() {
@@ -737,6 +757,23 @@ function initNavigation() {
 let authIsLogin = true;
 
 function initAuth() {
+  const btnGoogle = $('#btnGoogleAuth');
+  if (btnGoogle) {
+    btnGoogle.addEventListener('click', async () => {
+      const errEl = $('#authError');
+      errEl.hidden = true;
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+        $('#authModal').hidden = true;
+        toast('Connexion Google réussie !');
+      } catch (err) {
+        errEl.hidden = false;
+        errEl.textContent = err.message;
+      }
+    });
+  }
+
   $('#btnAuthToggle').addEventListener('click', (e) => {
     e.preventDefault();
     authIsLogin = !authIsLogin;
@@ -822,7 +859,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initRouter();
   initCatalogEvents();
-  initPlanningEvents();
+  updatePlanningTabs();
   initLibraryTabs();
   initAuth();
   loadHome();
