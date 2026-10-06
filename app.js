@@ -217,6 +217,9 @@ function setupHeroSlider(items) {
 
 function startHeroTimer() {
   clearInterval(state.heroTimer);
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return; // Pas d'auto-défilement si animations réduites demandées
+  }
   state.heroTimer = setInterval(() => {
     if (!state.homeHeroItems.length || state.currentRoute !== 'home') return;
     state.heroIndex = (state.heroIndex + 1) % state.homeHeroItems.length;
