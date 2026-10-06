@@ -176,54 +176,106 @@ async function loadHome() {
   renderRecommendations();
   checkFavoriteChapterAlerts();
 
-  container.innerHTML = `
-    <div class="section-block">
-      <div class="section-header">
-        <h2 class="section-title">🔥 Manga Populaires</h2>
-        <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Tout explorer →</a>
-      </div>
-      <div class="carousel" id="carouselPopularManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
-    </div>
-
-    <div class="section-block">
-      <div class="section-header">
-        <h2 class="section-title">🌟 Manhwa & Webtoons Tendances</h2>
-        <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Découvrir →</a>
-      </div>
-      <div class="carousel" id="carouselTrendingManhwa"><div class="catalog-loading"><div class="spinner"></div></div></div>
-    </div>
-
-    <div class="section-block">
-      <div class="section-header">
-        <h2 class="section-title">⚡ Nouveaux Chapitres & Sorties</h2>
-      </div>
-      <div class="carousel" id="carouselLatestManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
-    </div>
-  `;
-
+  // 1. Rendu instantané depuis le cache local (0ms d attente)
   try {
-    // 1. Manga Populaires
-    const popularRes = await mangadexAdapter.getCatalogue({ sort: 'followedCount', limit: 12 });
-    const popItems = (popularRes.items || []).map(formatMangaItem);
-    $('#carouselPopularManga').innerHTML = popItems.map(cardHTML).join('');
-    bindCards($('#carouselPopularManga'), popItems);
+    const cached = JSON.parse(localStorage.getItem('kova_cached_home_data') || 'null');
+    if (cached) {
+      if (cached.hero && cached.hero.length) {
+        state.heroMedia = cached.hero;
+        renderHero();
+      }
+      container.innerHTML = `
+        <div class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">🔥 Manga Populaires</h2>
+            <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Tout explorer →</a>
+          </div>
+          <div class="carousel" id="carouselPopularManga">${cached.popHtml || ''}</div>
+        </div>
+        <div class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">🌟 Manhwa & Webtoons Tendances</h2>
+            <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Découvrir →</a>
+          </div>
+          <div class="carousel" id="carouselTrendingManhwa">${cached.manhwaHtml || ''}</div>
+        </div>
+        <div class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">⚡ Nouveaux Chapitres & Sorties</h2>
+          </div>
+          <div class="carousel" id="carouselLatestManga">${cached.latestHtml || ''}</div>
+        </div>
+      `;
+      bindCards($('#carouselPopularManga'), cached.popItems || []);
+      bindCards($('#carouselTrendingManhwa'), cached.manhwaItems || []);
+      bindCards($('#carouselLatestManga'), cached.latestItems || []);
+    }
+  } catch (e) {
+    console.warn('Cache error:', e);
+  }
 
-    // Initialiser le Hero avec les 5 mangas populaires
-    state.heroMedia = popItems.slice(0, 5);
-    renderHero();
+  // Si aucun cache, injecter les cartes squelettes instantanées
+  if (!$('#carouselPopularManga')) {
+    const skeletonCards = Array(6).fill('<div class="card card-skeleton" style="height:240px;background:rgba(255,255,255,0.04);border-radius:12px;opacity:0.6;"></div>').join('');
+    container.innerHTML = `
+      <div class="section-block">
+        <div class="section-header"><h2 class="section-title">🔥 Manga Populaires</h2></div>
+        <div class="carousel" id="carouselPopularManga">${skeletonCards}</div>
+      </div>
+      <div class="section-block">
+        <div class="section-header"><h2 class="section-title">🌟 Manhwa & Webtoons Tendances</h2></div>
+        <div class="carousel" id="carouselTrendingManhwa">${skeletonCards}</div>
+      </div>
+      <div class="section-block">
+        <div class="section-header"><h2 class="section-title">⚡ Nouveaux Chapitres & Sorties</h2></div>
+        <div class="carousel" id="carouselLatestManga">${skeletonCards}</div>
+      </div>
+    `;
+  }
 
-    // 2. Manhwa & Webtoons Tendances (ko)
-    const manhwaRes = await mangadexAdapter.getCatalogue({ originalLanguage: 'ko', sort: 'followedCount', limit: 12 });
-    const manhwaItems = (manhwaRes.items || []).map(formatMangaItem);
-    $('#carouselTrendingManhwa').innerHTML = manhwaItems.map(cardHTML).join('');
-    bindCards($('#carouselTrendingManhwa'), manhwaItems);
+  // 2. Requêtes réseau en parallèle (Promise.allSettled)
+  try {
+    const [popRes, manhwaRes, latestRes] = await Promise.allSettled([
+      mangadexAdapter.getCatalogue({ sort: 'followedCount', limit: 12 }),
+      mangadexAdapter.getCatalogue({ originalLanguage: 'ko', sort: 'followedCount', limit: 12 }),
+      mangadexAdapter.getCatalogue({ sort: 'latest', limit: 12 })
+    ]);
 
-    // 3. Nouveaux Chapitres
-    const latestRes = await mangadexAdapter.getCatalogue({ sort: 'latest', limit: 12 });
-    const latestItems = (latestRes.items || []).map(formatMangaItem);
-    $('#carouselLatestManga').innerHTML = latestItems.map(cardHTML).join('');
-    bindCards($('#carouselLatestManga'), latestItems);
+    let cachePayload = {};
 
+    if (popRes.status === 'fulfilled' && popRes.value?.items?.length) {
+      const popItems = popRes.value.items.map(formatMangaItem);
+      const popHtml = popItems.map(cardHTML).join('');
+      const el = $('#carouselPopularManga');
+      if (el) { el.innerHTML = popHtml; bindCards(el, popItems); }
+      state.heroMedia = popItems.slice(0, 5);
+      renderHero();
+      cachePayload.hero = state.heroMedia;
+      cachePayload.popItems = popItems;
+      cachePayload.popHtml = popHtml;
+    }
+
+    if (manhwaRes.status === 'fulfilled' && manhwaRes.value?.items?.length) {
+      const manhwaItems = manhwaRes.value.items.map(formatMangaItem);
+      const manhwaHtml = manhwaItems.map(cardHTML).join('');
+      const el = $('#carouselTrendingManhwa');
+      if (el) { el.innerHTML = manhwaHtml; bindCards(el, manhwaItems); }
+      cachePayload.manhwaItems = manhwaItems;
+      cachePayload.manhwaHtml = manhwaHtml;
+    }
+
+    if (latestRes.status === 'fulfilled' && latestRes.value?.items?.length) {
+      const latestItems = latestRes.value.items.map(formatMangaItem);
+      const latestHtml = latestItems.map(cardHTML).join('');
+      const el = $('#carouselLatestManga');
+      if (el) { el.innerHTML = latestHtml; bindCards(el, latestItems); }
+      cachePayload.latestItems = latestItems;
+      cachePayload.latestHtml = latestHtml;
+    }
+
+    if (Object.keys(cachePayload).length > 0) {
+      localStorage.setItem('kova_cached_home_data', JSON.stringify(cachePayload));
+    }
   } catch (err) {
     console.error('Erreur chargement accueil:', err);
   }
@@ -1203,7 +1255,7 @@ function boot() {
   const splash = $('#splash');
   if (splash) {
     splash.classList.add('hidden');
-    setTimeout(() => { splash.remove(); }, 400);
+    splash.style.transition = 'opacity 0.15s ease'; splash.style.opacity = '0'; setTimeout(() => { splash.remove(); }, 160);
   }
 }
 
@@ -1217,7 +1269,7 @@ if (document.readyState === 'loading') {
 setTimeout(() => {
   const splash = $('#splash');
   if (splash) splash.remove();
-}, 800);
+}, 250);
 
 
 /* Écouteur global pour kova-catalog.js */
