@@ -312,5 +312,47 @@ export class MangaDexAdapter {
   }
 }
 
+
+  /**
+   * Récupère les détails complets d'un manga par son ID
+   */
+  async getMangaDetails(mangaId) {
+    const url = `${this.apiBase}/manga/${mangaId}?includes[]=cover_art&includes[]=author&includes[]=artist`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error(`Manga non trouvé (statut ${res.status})`);
+    const data = await res.json();
+    const stats = await this.fetchStatistics([mangaId]);
+    return this.normalizeManga(data.data, stats);
+  }
+
+  /**
+   * Récupère les pages officielles d'un chapitre via l'infrastructure autorisée MangaDex At-Home
+   * Supporte le mode haute qualité et le mode économie de données (dataSaver)
+   */
+  async getChapterPages(chapterId, { dataSaver = false } = {}) {
+    const res = await fetch(`${this.apiBase}/at-home/server/${chapterId}`);
+    if (!res.ok) throw new Error(`Erreur serveur MangaDex At-Home: ${res.status}`);
+    const data = await res.json();
+    const baseUrl = data.baseUrl;
+    const hash = data.chapter?.hash;
+    const fileNames = dataSaver ? (data.chapter?.dataSaver || []) : (data.chapter?.data || []);
+    const subPath = dataSaver ? 'data-saver' : 'data';
+
+    const pages = fileNames.map((fn, idx) => ({
+      index: idx + 1,
+      fileName: fn,
+      url: `${baseUrl}/${subPath}/${hash}/${fn}`
+    }));
+
+    return {
+      chapterId,
+      hash,
+      total: pages.length,
+      pages,
+      isDataSaver: dataSaver,
+      source: 'mangadex_at_home'
+    };
+  }
+
 // Instance singleton exportée
 export const mangadexAdapter = new MangaDexAdapter();
