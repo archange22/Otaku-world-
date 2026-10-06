@@ -1053,7 +1053,7 @@ function initAuth() {
       $('#profileUsername').textContent = 'Invité';
       $('#profileEmail').textContent = 'Non connecté';
       $('#profileRoleBadge').textContent = 'Visiteur';
-      $('#btnOpenAuth').textContent = 'Se connecter / S'inscrire';
+      $('#btnOpenAuth').textContent = 'Se connecter / S\'inscrire';
     }
     updateProfileKovaUI();
   });
