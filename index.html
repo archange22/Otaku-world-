@@ -3,108 +3,350 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a10">
+<meta name="theme-color" content="#07080f">
 <title>Otaku-World — Anime & Manga</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://graphql.anilist.co">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="splash"><div class="splash-logo">OTAKU<span>WORLD</span></div></div>
 
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-logo">OTAKU<span>WORLD</span></div>
+    <div class="splash-spinner"></div>
+  </div>
+</div>
+
+<!-- En-tête supérieur -->
 <header id="topbar">
-  <button class="icon-btn" id="btnMenu" aria-label="Menu">
-    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-  </button>
-  <a class="brand" href="#" data-nav="home">OTAKU<span>WORLD</span></a>
-  <div class="top-actions">
-    <button class="icon-btn" id="btnSearch" aria-label="Recherche">
-      <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  <div class="top-left">
+    <button class="icon-btn" id="btnDrawerOpen" aria-label="Ouvrir le menu">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
     </button>
-    <button class="avatar-btn" id="btnProfile" aria-label="Profil">
-      <img id="navAvatar" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%232a2a3a'/%3E%3Ctext x='32' y='40' text-anchor='middle' fill='%23aaa' font-size='26'%3E%3F%3C/text%3E%3C/svg%3E">
+    <a class="brand" href="#/">OTAKU<span>WORLD</span></a>
+  </div>
+
+  <div class="top-search-bar" id="topSearchBar">
+    <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="search" id="quickSearchInput" placeholder="Rechercher un anime, un manga..." autocomplete="off">
+  </div>
+
+  <div class="top-actions">
+    <a href="#/catalogue" class="icon-btn mobile-only" aria-label="Recherche">
+      <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </a>
+    <button class="avatar-btn" id="btnUserMenu" aria-label="Mon profil">
+      <img id="navAvatar" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%231f2338'/%3E%3Cpath d='M32 20a8 8 0 100 16 8 8 0 000-16zM18 48c0-7.7 6.3-14 14-14s14 6.3 14 14' fill='%238c90a4'/%3E%3C/svg%3E">
     </button>
   </div>
 </header>
 
-<nav id="sidebar">
-  <a href="#" data-nav="home" class="side-link active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Accueil</span></a>
-  <a href="#" data-nav="search" class="side-link"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Recherche</span></a>
-  <a href="#" data-nav="library" class="side-link"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg><span>Ma bibliothèque</span></a>
-  <a href="#" data-nav="calendar" class="side-link"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg><span>Planning</span></a>
-  <a href="#" data-nav="profile" class="side-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Profil</span></a>
-</nav>
+<!-- Tiroir mobile (Drawer) -->
+<div id="drawerOverlay" class="drawer-overlay" hidden>
+  <aside id="drawer" class="drawer">
+    <div class="drawer-head">
+      <div class="brand">OTAKU<span>WORLD</span></div>
+      <button class="icon-btn" id="btnDrawerClose" aria-label="Fermer le menu">&times;</button>
+    </div>
+    <div class="drawer-user" id="drawerUserCard">
+      <div class="drawer-user-avatar">
+        <img id="drawerAvatar" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%231f2338'/%3E%3Cpath d='M32 20a8 8 0 100 16 8 8 0 000-16zM18 48c0-7.7 6.3-14 14-14s14 6.3 14 14' fill='%238c90a4'/%3E%3C/svg%3E">
+      </div>
+      <div class="drawer-user-info">
+        <strong id="drawerUserName">Invité</strong>
+        <span id="drawerUserSub">Se connecter</span>
+      </div>
+    </div>
+    <nav class="drawer-nav">
+      <a href="#/" class="drawer-link"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Accueil</span></a>
+      <a href="#/catalogue" class="drawer-link"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg><span>Catalogue complet</span></a>
+      <a href="#/planning" class="drawer-link"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg><span>Planning des sorties</span></a>
+      <a href="#/library" class="drawer-link"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg><span>Ma bibliothèque</span></a>
+      <a href="#/profile" class="drawer-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Mon profil & réglages</span></a>
+    </nav>
+    <div class="drawer-footer">
+      <div class="drawer-badge">v1.0 • Otaku-World</div>
+    </div>
+  </aside>
+</div>
 
-<main id="main">
-  <section id="hero" class="hero">
-    <div class="hero-backdrop" id="heroBackdrop"></div>
-    <div class="hero-fade"></div>
-    <div class="hero-content" id="heroContent">
-      <div class="skeleton skel-hero-title"></div>
-      <div class="skeleton skel-hero-line"></div>
+<!-- Barre latérale Ordinateur (Desktop Sidebar) -->
+<aside id="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Navigation</div>
+    <a href="#/" class="side-link active" data-route="home">
+      <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>
+      <span>Accueil</span>
+    </a>
+    <a href="#/catalogue" class="side-link" data-route="catalogue">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg>
+      <span>Catalogue</span>
+    </a>
+    <a href="#/planning" class="side-link" data-route="planning">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg>
+      <span>Planning</span>
+    </a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Personnel</div>
+    <a href="#/library" class="side-link" data-route="library">
+      <svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>
+      <span>Ma bibliothèque</span>
+    </a>
+    <a href="#/profile" class="side-link" data-route="profile">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <span>Mon compte</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-chip" id="sideUserChip">
+      <img id="sideAvatar" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%231f2338'/%3E%3Cpath d='M32 20a8 8 0 100 16 8 8 0 000-16zM18 48c0-7.7 6.3-14 14-14s14 6.3 14 14' fill='%238c90a4'/%3E%3C/svg%3E">
+      <div class="user-chip-meta">
+        <span class="user-chip-name" id="sideUserName">Invité</span>
+        <span class="user-chip-role" id="sideUserRole">Non connecté</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Contenu principal géré par le routeur -->
+<main id="appContent">
+  <!-- Page 1 : Accueil -->
+  <section id="viewHome" class="view-page active">
+    <!-- Hero Slider -->
+    <div class="hero" id="hero">
+      <div class="hero-backdrop" id="heroBackdrop"></div>
+      <div class="hero-fade"></div>
+      <div class="hero-content" id="heroContent">
+        <div class="skeleton skel-title"></div>
+        <div class="skeleton skel-line"></div>
+      </div>
+      <div class="hero-dots" id="heroDots"></div>
+    </div>
+
+    <!-- Feed Carousels -->
+    <div class="feed-container" id="feedContainer"></div>
+  </section>
+
+  <!-- Page 2 : Catalogue complet avec filtres -->
+  <section id="viewCatalogue" class="view-page" hidden>
+    <div class="catalog-header">
+      <div class="catalog-title-row">
+        <h1 class="page-title">Catalogue Anime & Manga</h1>
+        <span class="catalog-count" id="catalogCount">Recherche en temps réel</span>
+      </div>
+
+      <!-- Barre de recherche -->
+      <div class="catalog-search-bar">
+        <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="search" id="catSearchInput" placeholder="Titre en français, romaji, anglais…" autocomplete="off">
+        <button class="clear-btn" id="catSearchClear" hidden>&times;</button>
+      </div>
+
+      <!-- Filtres en puces scrollables -->
+      <div class="filters-scroll">
+        <!-- Types -->
+        <div class="filter-group">
+          <span class="filter-label">Format</span>
+          <div class="chip-row" id="filterFormat">
+            <button class="chip active" data-val="ALL">Tous</button>
+            <button class="chip" data-val="TV">Séries TV</button>
+            <button class="chip" data-val="MOVIE">Films</button>
+            <button class="chip" data-val="MANGA">Mangas</button>
+          </div>
+        </div>
+
+        <!-- Tri -->
+        <div class="filter-group">
+          <span class="filter-label">Trier par</span>
+          <div class="chip-row" id="filterSort">
+            <button class="chip active" data-val="TRENDING_DESC">🔥 Tendances</button>
+            <button class="chip" data-val="POPULARITY_DESC">⭐ Popularité</button>
+            <button class="chip" data-val="SCORE_DESC">🏆 Mieux notés</button>
+            <button class="chip" data-val="START_DATE_DESC">⚡ Nouveautés</button>
+          </div>
+        </div>
+
+        <!-- Genres -->
+        <div class="filter-group">
+          <span class="filter-label">Genre</span>
+          <div class="chip-row" id="filterGenres">
+            <button class="chip active" data-genre="">Tous les genres</button>
+            <button class="chip" data-genre="Action">Action</button>
+            <button class="chip" data-genre="Adventure">Aventure</button>
+            <button class="chip" data-genre="Comedy">Comédie</button>
+            <button class="chip" data-genre="Drama">Drame</button>
+            <button class="chip" data-genre="Fantasy">Fantasy</button>
+            <button class="chip" data-genre="Romance">Romance</button>
+            <button class="chip" data-genre="Sci-Fi">Sci-Fi</button>
+            <button class="chip" data-genre="Supernatural">Surnaturel</button>
+            <button class="chip" data-genre="Mystery">Mystère</button>
+            <button class="chip" data-genre="Psychological">Psychologique</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grille de résultats -->
+    <div class="catalog-grid" id="catalogGrid"></div>
+    <div class="catalog-loading" id="catalogLoading" hidden>
+      <div class="spinner"></div>
+    </div>
+    <div class="catalog-empty" id="catalogEmpty" hidden>
+      <div class="empty-icon">🔍</div>
+      <h3>Aucun résultat trouvé</h3>
+      <p>Essaie de modifier tes filtres ou ta recherche.</p>
+    </div>
+    <div class="catalog-more-wrap" id="catalogMoreWrap" hidden>
+      <button class="btn-secondary" id="btnLoadMore">Charger plus de titres</button>
     </div>
   </section>
 
-  <section id="feed"></section>
+  <!-- Page 3 : Planning des sorties -->
+  <section id="viewPlanning" class="view-page" hidden>
+    <div class="planning-header">
+      <h1 class="page-title">Planning de diffusion (Simulcast)</h1>
+      <p class="page-sub">Sorties d'épisodes en direct du Japon et simulcast officiel</p>
+      <div class="days-tabs" id="planningDays">
+        <button class="day-tab active" data-day="0">Aujourd'hui</button>
+        <button class="day-tab" data-day="1">Demain</button>
+        <button class="day-tab" data-day="2">+2 j</button>
+        <button class="day-tab" data-day="3">+3 j</button>
+        <button class="day-tab" data-day="4">+4 j</button>
+        <button class="day-tab" data-day="5">+5 j</button>
+        <button class="day-tab" data-day="6">+6 j</button>
+      </div>
+    </div>
+    <div class="planning-grid" id="planningGrid"></div>
+  </section>
+
+  <!-- Page 4 : Ma Bibliothèque -->
+  <section id="viewLibrary" class="view-page" hidden>
+    <div class="library-header">
+      <h1 class="page-title">Ma bibliothèque</h1>
+      <div class="chip-row" id="libTabs">
+        <button class="chip active" data-list="favorites">♥ Mes Favoris (<span id="countFav">0</span>)</button>
+        <button class="chip" data-list="watchlist">⏱ À regarder (<span id="countWatch">0</span>)</button>
+        <button class="chip" data-list="history">👁 Vu / Historique (<span id="countHist">0</span>)</button>
+      </div>
+    </div>
+    <div class="catalog-grid" id="libraryGrid"></div>
+    <div class="library-empty" id="libraryEmpty" hidden>
+      <div class="empty-icon">📚</div>
+      <h3 id="libEmptyTitle">Votre liste est vide</h3>
+      <p id="libEmptyDesc">Explorez le catalogue pour ajouter vos animes préférés.</p>
+      <a href="#/catalogue" class="btn-primary" style="margin-top:14px;display:inline-flex">Découvrir le catalogue</a>
+    </div>
+  </section>
+
+  <!-- Page 5 : Profil & Paramètres -->
+  <section id="viewProfile" class="view-page" hidden>
+    <div class="profile-card" id="profileCard">
+      <div class="profile-banner"></div>
+      <div class="profile-meta">
+        <div class="profile-avatar-wrap">
+          <img id="profileAvatarBig" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' rx='60' fill='%231f2338'/%3E%3Cpath d='M60 38a16 16 0 100 32 16 16 0 000-32zM32 94c0-15.5 12.5-28 28-28s28 12.5 28 28' fill='%238c90a4'/%3E%3C/svg%3E">
+        </div>
+        <div class="profile-names">
+          <h2 id="profileUsername">Invité</h2>
+          <span class="profile-badge" id="profileRoleBadge">Visiteur</span>
+          <p id="profileEmail" class="profile-email">Non connecté</p>
+        </div>
+        <div class="profile-actions" id="profileActions">
+          <button class="btn-primary" id="btnOpenAuth">Se connecter / S'inscrire</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <div class="settings-box">
+        <h3>⚡ Préférences d'affichage</h3>
+        <label class="setting-row">
+          <span>Mode données réduites</span>
+          <input type="checkbox" id="chkDataSaver">
+        </label>
+        <label class="setting-row">
+          <span>Lecteur automatique des bandes-annonces</span>
+          <input type="checkbox" id="chkAutoplayTrailer" checked>
+        </label>
+      </div>
+
+      <div class="settings-box">
+        <h3>🛡️ À propos d'Otaku-World</h3>
+        <p class="settings-text">Otaku-World v1.0 — Plateforme communautaire de suivi d'animes & mangas connectée aux APIs AniList et Firebase.</p>
+        <div class="settings-links">
+          <a href="https://github.com/archange22/Otaku-world-" target="_blank" rel="noopener">Dépôt GitHub</a>
+          <a href="https://site-otaku-f9a94.web.app" target="_blank" rel="noopener">Lien direct Firebase</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 6 : Fiche détaillée média -->
+  <section id="viewDetail" class="view-page" hidden>
+    <div class="detail-nav-bar">
+      <button class="icon-btn back-btn" id="btnBackDetail" aria-label="Retour">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Retour</span>
+      </button>
+    </div>
+    <div id="detailContainer"></div>
+  </section>
 </main>
 
-<div id="searchView" class="page" hidden>
-  <div class="search-head">
-    <div class="search-box">
-      <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="searchInput" type="search" placeholder="Rechercher un anime, un manga…" autocomplete="off">
-    </div>
-    <div class="chip-row" id="searchChips">
-      <button class="chip active" data-type="ANIME">Anime</button>
-      <button class="chip" data-type="MANGA">Manga</button>
-    </div>
-  </div>
-  <div class="grid" id="searchGrid"></div>
-  <div id="searchEmpty" class="empty" hidden></div>
-</div>
-
-<div id="libraryView" class="page" hidden>
-  <h2 class="page-title">Ma bibliothèque</h2>
-  <div class="chip-row" id="libTabs">
-    <button class="chip active" data-list="favorites">Favoris</button>
-    <button class="chip" data-list="watchlist">À regarder</button>
-    <button class="chip" data-list="history">Historique</button>
-  </div>
-  <div class="grid" id="libraryGrid"></div>
-  <div id="libraryEmpty" class="empty" hidden></div>
-</div>
-
-<div id="detailView" class="page" hidden>
-  <button class="icon-btn back-btn" id="btnBackDetail" aria-label="Retour">
-    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-  </button>
-  <div id="detailContent"></div>
-</div>
-
+<!-- Barre de navigation inférieure Mobile (Bottom Nav) -->
 <nav id="bottomNav">
-  <a href="#" data-nav="home" class="bn-link active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Accueil</span></a>
-  <a href="#" data-nav="search" class="bn-link"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Recherche</span></a>
-  <a href="#" data-nav="library" class="bn-link"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg><span>Biblio</span></a>
-  <a href="#" data-nav="calendar" class="bn-link"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg><span>Planning</span></a>
-  <a href="#" data-nav="profile" class="bn-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Profil</span></a>
+  <a href="#/" class="bn-link active" data-route="home">
+    <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>
+    <span>Accueil</span>
+  </a>
+  <a href="#/catalogue" class="bn-link" data-route="catalogue">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg>
+    <span>Catalogue</span>
+  </a>
+  <a href="#/planning" class="bn-link" data-route="planning">
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg>
+    <span>Planning</span>
+  </a>
+  <a href="#/library" class="bn-link" data-route="library">
+    <svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>
+    <span>Biblio</span>
+  </a>
+  <a href="#/profile" class="bn-link" data-route="profile">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <span>Profil</span>
+  </a>
 </nav>
 
+<!-- Modal Authentification Firebase -->
 <div id="authModal" class="modal" hidden>
   <div class="modal-card">
-    <button class="icon-btn modal-close" data-close>&times;</button>
-    <h3 id="authTitle">Connexion</h3>
+    <button class="icon-btn modal-close" id="btnAuthClose" aria-label="Fermer">&times;</button>
+    <div class="auth-header">
+      <div class="brand">OTAKU<span>WORLD</span></div>
+      <h3 id="authTitle" style="margin-top:8px">Connexion</h3>
+      <p id="authSubtitle" style="font-size:13px;color:var(--text-muted)">Synchronisez vos favoris et votre progression sur tous vos appareils.</p>
+    </div>
     <form id="authForm">
-      <input id="authEmail" type="email" placeholder="Email" required autocomplete="email">
-      <input id="authPass" type="password" placeholder="Mot de passe (6 caractères min.)" required minlength="6" autocomplete="current-password">
-      <button class="btn-primary" type="submit" id="authSubmit">Se connecter</button>
+      <div class="form-group">
+        <label for="authEmail">Adresse email</label>
+        <input id="authEmail" type="email" placeholder="exemple@mail.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="authPass">Mot de passe</label>
+        <input id="authPass" type="password" placeholder="6 caractères minimum" required minlength="6" autocomplete="current-password">
+      </div>
+      <button class="btn-primary btn-block" type="submit" id="authSubmit">Se connecter</button>
     </form>
-    <p class="auth-switch" id="authSwitch">Pas de compte ? <a href="#" id="btnAuthMode">Créer un compte</a></p>
-    <p class="form-error" id="authError" hidden></p>
+    <p class="auth-switch">
+      <span id="authSwitchPrompt">Vous n'avez pas de compte ?</span>
+      <a href="#" id="btnAuthToggle">Créer un compte</a>
+    </p>
+    <div class="form-error" id="authError" hidden></div>
   </div>
-</div>
-
-<div id="detailSheet" class="modal" hidden>
-  <div class="modal-card sheet" id="detailSheetCard"></div>
 </div>
 
 <div id="toasts"></div>

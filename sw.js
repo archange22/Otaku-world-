@@ -1,4 +1,4 @@
-const CACHE_NAME = 'otaku-world-v1';
+const CACHE_NAME = 'otaku-world-v1.1';
 const ASSETS = [
   '/',
   '/index.html',

@@ -1,21 +1,33 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { ref, get, set, update, remove, onValue } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
+import { ref, get, set, remove, onValue } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
 
-/* ---------- État global ---------- */
+/* ---------- État de l'application ---------- */
 const state = {
+  currentRoute: 'home',
+  mediaId: null,
   user: null,
-  profile: null,
-  view: 'home',
-  searchType: 'ANIME',
-  libTab: 'favorites',
   library: { favorites: {}, watchlist: {}, history: {} },
-  lastDetail: null
+  libTab: 'favorites',
+  catalog: {
+    page: 1,
+    hasNextPage: false,
+    loading: false,
+    query: '',
+    format: 'ALL',
+    sort: 'TRENDING_DESC',
+    genre: '',
+    items: []
+  },
+  homeHeroItems: [],
+  heroIndex: 0,
+  heroTimer: null,
+  planningDay: 0
 };
 
 const ANILIST = 'https://graphql.anilist.co';
 
-/* ---------- Helpers ---------- */
+/* ---------- Helpers DOM & Toast ---------- */
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
@@ -24,358 +36,804 @@ function toast(msg) {
   el.className = 'toast';
   el.textContent = msg;
   $('#toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  setTimeout(() => el.remove(), 3200);
 }
 
+/* ---------- AniList API Client ---------- */
 async function anilist(query, variables = {}) {
   const res = await fetch(ANILIST, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ query, variables })
   });
-  if (!res.ok) throw new Error('AniList indisponible');
+  if (!res.ok) throw new Error('API AniList indisponible');
   const json = await res.json();
   if (json.errors) throw new Error(json.errors[0].message);
   return json.data;
 }
 
 const CARD_FIELDS = `
-  id title { romaji english } coverImage { extraLarge large color }
-  bannerImage averageScore format seasonYear countryOfOrigin
+  id title { romaji english native } coverImage { extraLarge large color }
+  bannerImage averageScore format seasonYear status episodes chapters
 `;
 
-/* ---------- Rendu des cartes ---------- */
-function mediaType(m) { return m.format && /MANGA|NOVEL|ONE_SHOT/.test(m.format) ? 'MANGA' : 'ANIME'; }
+function mediaType(m) {
+  return m.format && /MANGA|NOVEL|ONE_SHOT/.test(m.format) ? 'MANGA' : 'ANIME';
+}
 
 function cardHTML(m) {
-  const title = m.title.romaji || m.title.english || 'Sans titre';
+  const title = m.title.romaji || m.title.english || m.title.native || 'Sans titre';
   const img = m.coverImage?.large || m.coverImage?.extraLarge || '';
-  const sub = [m.format, m.seasonYear].filter(Boolean).join(' • ');
+  const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
+  const sub = [m.format || 'ANIME', m.seasonYear].filter(Boolean).join(' • ');
   return `
-  <article class="card" data-id="${m.id}">
-    <div class="card-poster">
-      <img loading="lazy" src="${img}" alt="${title}">
-      ${m.averageScore ? `<span class="card-score">★ ${(m.averageScore / 10).toFixed(1)}</span>` : ''}
-    </div>
-    <h3 class="card-title">${title}</h3>
-    <span class="card-sub">${sub}</span>
-  </article>`;
+    <article class="card" data-id="${m.id}">
+      <div class="card-poster">
+        <img loading="lazy" src="${img}" alt="${title}">
+        ${score ? `<span class="card-score">★ ${score}</span>` : ''}
+        <span class="card-format">${m.format || 'ANIME'}</span>
+      </div>
+      <h3 class="card-title">${title}</h3>
+      <span class="card-sub">${sub}</span>
+    </article>`;
 }
 
 function bindCards(container, list) {
   container.querySelectorAll('.card').forEach(el => {
     el.addEventListener('click', () => {
-      const m = list.find(x => String(x.id) === el.dataset.id);
-      if (m) openDetail(m);
+      window.location.hash = `#/anime/${el.dataset.id}`;
     });
   });
 }
 
-/* ---------- Hero ---------- */
-function renderHero(m) {
-  const hero = $('#hero');
-  const bd = $('#heroBackdrop');
-  bd.style.backgroundImage = `url(${m.bannerImage || m.coverImage?.extraLarge || ''})`;
-  $('#heroContent').innerHTML = `
-    <span class="hero-badge">${mediaType(m) === 'ANIME' ? 'Anime à la une' : 'Manga à la une'}</span>
-    <h1 class="hero-title">${m.title.romaji || m.title.english}</h1>
-    ${m.averageScore ? `<span class="card-sub">★ ${(m.averageScore / 10).toFixed(1)} / 10</span>` : ''}
-    <p class="hero-desc">${m.description || ''}</p>
-    <div class="hero-actions">
-      <button class="btn-primary" id="heroWatch">▶ Regarder</button>
-      <button class="btn-secondary" id="heroInfo">ℹ Plus d'infos</button>
-    </div>`;
-  $('#heroWatch').onclick = () => openDetail(m);
-  $('#heroInfo').onclick = () => openDetail(m);
+/* ==========================================================
+   1. SOCLE TECHNIQUE & ROUTAGE (Hash Router)
+   ========================================================== */
+function initRouter() {
+  window.addEventListener('hashchange', handleRoute);
+  handleRoute();
 }
 
-/* ---------- Rangées d'accueil ---------- */
-function rowHTML(title, id) {
-  return `<section class="feed-row">
-    <div class="feed-head"><h2 class="feed-title">${title}</h2></div>
-    <div class="feed-scroll" id="${id}"></div>
-  </section>`;
+function handleRoute() {
+  const hash = window.location.hash.slice(1) || '/';
+  const [path, param] = hash.split('/').filter(Boolean);
+
+  let route = 'home';
+  if (path === 'catalogue') route = 'catalogue';
+  else if (path === 'planning') route = 'planning';
+  else if (path === 'library') route = 'library';
+  else if (path === 'profile') route = 'profile';
+  else if (path === 'anime' && param) {
+    route = 'detail';
+    state.mediaId = param;
+  }
+
+  state.currentRoute = route;
+
+  // Cacher toutes les vues puis afficher la vue active
+  const views = {
+    home: $('#viewHome'),
+    catalogue: $('#viewCatalogue'),
+    planning: $('#viewPlanning'),
+    library: $('#viewLibrary'),
+    profile: $('#viewProfile'),
+    detail: $('#viewDetail')
+  };
+
+  Object.entries(views).forEach(([k, el]) => {
+    if (el) el.hidden = (k !== route);
+  });
+
+  // Mise à jour des liens actifs dans les navs
+  $$('[data-route]').forEach(link => {
+    link.classList.toggle('active', link.dataset.route === route);
+  });
+  $$('.drawer-link').forEach(link => {
+    const target = link.getAttribute('href').replace('#/', '') || 'home';
+    link.classList.toggle('active', target === route);
+  });
+
+  // Fermer le tiroir si ouvert
+  $('#drawerOverlay').hidden = true;
+  window.scrollTo(0, 0);
+
+  // Déclenchement spécifique à la page
+  if (route === 'catalogue') {
+    if (!state.catalog.items.length) fetchCatalog(true);
+  } else if (route === 'planning') {
+    loadPlanning(state.planningDay);
+  } else if (route === 'library') {
+    renderLibrary();
+  } else if (route === 'detail' && state.mediaId) {
+    loadDetail(state.mediaId);
+  }
 }
 
-function fillRow(id, list) {
-  const el = document.getElementById(id);
+/* ==========================================================
+   2. ACCUEIL (Hero responsive + Carrousels réels)
+   ========================================================== */
+function feedRowHTML(title, id, filterVal) {
+  return `
+    <section class="feed-row">
+      <div class="feed-head">
+        <h2 class="feed-title">${title}</h2>
+        <a href="#/catalogue" class="feed-see-all" data-quick-sort="${filterVal}">Tout voir &rarr;</a>
+      </div>
+      <div class="feed-scroll" id="${id}"></div>
+    </section>`;
+}
+
+async function loadHome() {
+  const container = $('#feedContainer');
+  container.innerHTML = 
+    feedRowHTML('🔥 En cours de diffusion (Simulcast)', 'rowAiring', 'TRENDING_DESC') +
+    feedRowHTML('⭐ Les plus populaires de tous les temps', 'rowPopular', 'POPULARITY_DESC') +
+    feedRowHTML('🏆 Les chefs-d\u2019œuvre les mieux notés', 'rowTopRated', 'SCORE_DESC') +
+    feedRowHTML('📖 Mangas & Webtoons à l\u2019honneur', 'rowManga', 'POPULARITY_DESC');
+
+  try {
+    const [airing, popular, topRated, manga] = await Promise.all([
+      anilist(`query { Page(perPage: 16) { media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} description } } }`),
+      anilist(`query { Page(perPage: 16) { media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
+      anilist(`query { Page(perPage: 16) { media(type: ANIME, sort: SCORE_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
+      anilist(`query { Page(perPage: 16) { media(type: MANGA, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`)
+    ]);
+
+    const heroList = airing.Page.media.slice(0, 5);
+    state.homeHeroItems = heroList;
+    setupHeroSlider(heroList);
+
+    fillFeedRow('rowAiring', airing.Page.media);
+    fillFeedRow('rowPopular', popular.Page.media);
+    fillFeedRow('rowTopRated', topRated.Page.media);
+    fillFeedRow('rowManga', manga.Page.media);
+  } catch (err) {
+    container.innerHTML = `<div class="catalog-empty"><div class="empty-icon">⚠️</div><h3>Impossible de charger l\u2019accueil</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function fillFeedRow(rowId, list) {
+  const el = document.getElementById(rowId);
   if (!el) return;
   el.innerHTML = list.map(cardHTML).join('');
   bindCards(el, list);
 }
 
-async function loadHome() {
-  const feed = $('#feed');
-  feed.innerHTML = rowHTML('Tendances cette semaine', 'rowTrending') +
-    rowHTML('Animes populaires', 'rowPopular') +
-    rowHTML('Manga populaires', 'rowManga') +
-    rowHTML('Sorties récentes', 'rowRecent');
-  try {
-    const [trending, popular, manga] = await Promise.all([
-      anilist(`query { Page(perPage: 18) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
-      anilist(`query { Page(perPage: 18) { media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
-      anilist(`query { Page(perPage: 18) { media(type: MANGA, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`)
-    ]);
-    const t = trending.Page.media, p = popular.Page.media, g = manga.Page.media;
-    renderHero(t[0]);
-    fillRow('rowTrending', t);
-    fillRow('rowPopular', p);
-    fillRow('rowManga', g);
-    const recent = anilist(`query { Page(perPage: 18) { media(type: ANIME, sort: START_DATE_DESC, isAdult: false, status: RELEASING) { ${CARD_FIELDS} } } }`);
-    fillRow('rowRecent', (await recent).Page.media);
-  } catch (e) {
-    feed.innerHTML = `<div class="empty">Impossible de charger le catalogue : ${e.message}.<br>Vérifie ta connexion puis réessaie.</div>`;
-  }
-}
-
-/* ---------- Recherche ---------- */
-let searchTimer;
-function bindSearch() {
-  $('#searchInput').addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(runSearch, 450);
+function setupHeroSlider(items) {
+  if (!items.length) return;
+  const dotsContainer = $('#heroDots');
+  dotsContainer.innerHTML = items.map((_, i) => `<span class="hero-dot ${i === 0 ? 'active' : ''}" data-idx="${i}"></span>`).join('');
+  dotsContainer.querySelectorAll('.hero-dot').forEach(dot => {
+    dot.onclick = () => {
+      clearInterval(state.heroTimer);
+      state.heroIndex = parseInt(dot.dataset.idx, 10);
+      renderHeroItem(items[state.heroIndex]);
+      startHeroTimer();
+    };
   });
-  $$('#searchChips .chip').forEach(c => c.addEventListener('click', () => {
-    $$('#searchChips .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    state.searchType = c.dataset.type;
-    runSearch();
-  }));
+  renderHeroItem(items[0]);
+  startHeroTimer();
 }
 
-async function runSearch() {
-  const q = $('#searchInput').value.trim();
-  const grid = $('#searchGrid'), empty = $('#searchEmpty');
-  if (q.length < 2) { grid.innerHTML = ''; empty.hidden = true; return; }
-  grid.innerHTML = Array(8).fill('<div class="card"><div class="card-poster skeleton"></div><div class="skeleton" style="height:14px;margin-top:6px"></div></div>').join('');
-  empty.hidden = true;
+function startHeroTimer() {
+  clearInterval(state.heroTimer);
+  state.heroTimer = setInterval(() => {
+    if (!state.homeHeroItems.length || state.currentRoute !== 'home') return;
+    state.heroIndex = (state.heroIndex + 1) % state.homeHeroItems.length;
+    renderHeroItem(state.homeHeroItems[state.heroIndex]);
+  }, 6500);
+}
+
+function renderHeroItem(m) {
+  if (!m) return;
+  const backdrop = $('#heroBackdrop');
+  backdrop.style.backgroundImage = `url(${m.bannerImage || m.coverImage?.extraLarge || ''})`;
+
+  const title = m.title.romaji || m.title.english || 'Titre';
+  const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
+  const meta = [m.format || 'ANIME', m.seasonYear, m.status].filter(Boolean).join(' • ');
+
+  $('#heroContent').innerHTML = `
+    <span class="hero-badge">⚡ TOP SIMULCAST</span>
+    <h1 class="hero-title">${title}</h1>
+    <div class="hero-meta">
+      ${score ? `<span class="score">★ ${score} / 10</span> • ` : ''}
+      <span>${meta}</span>
+    </div>
+    <p class="hero-desc">${m.description ? m.description.replace(/<[^>]*>?/gm, '') : 'Découvrez cet anime sur Otaku-World.'}</p>
+    <div class="hero-actions">
+      <button class="btn-primary" id="btnHeroWatch">▶ Voir la fiche</button>
+      <button class="btn-secondary" id="btnHeroList">＋ Ajouter à ma liste</button>
+    </div>`;
+
+  $$('#heroDots .hero-dot').forEach((d, i) => d.classList.toggle('active', i === state.heroIndex));
+
+  $('#btnHeroWatch').onclick = () => { window.location.hash = `#/anime/${m.id}`; };
+  $('#btnHeroList').onclick = () => toggleLibraryItem('watchlist', m);
+}
+
+/* ==========================================================
+   3. CATALOGUE COMPLET AVEC RECHERCHE & FILTRES FONCTIONNELS
+   ========================================================== */
+let catalogSearchTimer;
+
+function initCatalogEvents() {
+  $('#catSearchInput').addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    $('#catSearchClear').hidden = !val;
+    clearTimeout(catalogSearchTimer);
+    catalogSearchTimer = setTimeout(() => {
+      state.catalog.query = val;
+      fetchCatalog(true);
+    }, 400);
+  });
+
+  $('#catSearchClear').addEventListener('click', () => {
+    $('#catSearchInput').value = '';
+    $('#catSearchClear').hidden = true;
+    state.catalog.query = '';
+    fetchCatalog(true);
+  });
+
+  // Filtre Format (TV, MOVIE, MANGA)
+  $$('#filterFormat .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#filterFormat .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      state.catalog.format = btn.dataset.val;
+      fetchCatalog(true);
+    });
+  });
+
+  // Filtre Tri (Tendances, Popularité, Mieux notés, Nouveautés)
+  $$('#filterSort .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#filterSort .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      state.catalog.sort = btn.dataset.val;
+      fetchCatalog(true);
+    });
+  });
+
+  // Filtre Genre
+  $$('#filterGenres .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#filterGenres .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      state.catalog.genre = btn.dataset.genre;
+      fetchCatalog(true);
+    });
+  });
+
+  // Bouton Charger Plus
+  $('#btnLoadMore').addEventListener('click', () => {
+    if (!state.catalog.loading && state.catalog.hasNextPage) {
+      state.catalog.page++;
+      fetchCatalog(false);
+    }
+  });
+
+  // Raccourci touche '/' pour la recherche
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      window.location.hash = '#/catalogue';
+      setTimeout(() => $('#catSearchInput').focus(), 150);
+    }
+  });
+
+  // Barre de recherche dans le topbar
+  $('#quickSearchInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const q = e.target.value.trim();
+      window.location.hash = '#/catalogue';
+      $('#catSearchInput').value = q;
+      state.catalog.query = q;
+      fetchCatalog(true);
+    }
+  });
+}
+
+async function fetchCatalog(reset = false) {
+  if (state.catalog.loading) return;
+  state.catalog.loading = true;
+
+  if (reset) {
+    state.catalog.page = 1;
+    state.catalog.items = [];
+    $('#catalogGrid').innerHTML = '';
+    $('#catalogEmpty').hidden = true;
+  }
+
+  $('#catalogLoading').hidden = false;
+  $('#catalogMoreWrap').hidden = true;
+
+  const type = state.catalog.format === 'MANGA' ? 'MANGA' : 'ANIME';
+  let formatParam = undefined;
+  if (state.catalog.format === 'TV') formatParam = 'TV';
+  if (state.catalog.format === 'MOVIE') formatParam = 'MOVIE';
+
+  const vars = {
+    page: state.catalog.page,
+    perPage: 24,
+    type: type,
+    sort: [state.catalog.sort]
+  };
+
+  if (state.catalog.query) vars.search = state.catalog.query;
+  if (formatParam) vars.format = formatParam;
+  if (state.catalog.genre) vars.genre = state.catalog.genre;
+
+  const query = `
+    query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $search: String, $format: MediaFormat, $genre: String) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage total }
+        media(type: $type, sort: $sort, search: $search, format: $format, genre: $genre, isAdult: false) {
+          ${CARD_FIELDS}
+        }
+      }
+    }
+  `;
+
   try {
-    const data = await anilist(`query ($s: String, $t: MediaType) { Page(perPage: 24) { media(search: $s, type: $t, isAdult: false) { ${CARD_FIELDS} } } }`, { s: q, t: state.searchType });
-    const list = data.Page.media;
-    grid.innerHTML = list.map(cardHTML).join('') || '';
-    bindCards(grid, list);
-    if (!list.length) { empty.hidden = false; empty.textContent = 'Aucun résultat pour cette recherche.'; }
-  } catch (e) {
-    grid.innerHTML = '';
-    empty.hidden = false;
-    empty.textContent = 'Erreur de recherche : ' + e.message;
+    const data = await anilist(query, vars);
+    const { media, pageInfo } = data.Page;
+
+    state.catalog.hasNextPage = pageInfo.hasNextPage;
+    state.catalog.items = reset ? media : [...state.catalog.items, ...media];
+
+    $('#catalogCount').textContent = `${pageInfo.total ? pageInfo.total.toLocaleString('fr-FR') : media.length} résultats`;
+
+    if (reset) {
+      $('#catalogGrid').innerHTML = media.map(cardHTML).join('');
+    } else {
+      const div = document.createElement('div');
+      div.innerHTML = media.map(cardHTML).join('');
+      while (div.firstChild) $('#catalogGrid').appendChild(div.firstChild);
+    }
+
+    bindCards($('#catalogGrid'), state.catalog.items);
+
+    if (!state.catalog.items.length) {
+      $('#catalogEmpty').hidden = false;
+    } else if (pageInfo.hasNextPage) {
+      $('#catalogMoreWrap').hidden = false;
+    }
+  } catch (err) {
+    if (reset) {
+      $('#catalogGrid').innerHTML = '';
+      $('#catalogEmpty').hidden = false;
+      $('#catalogEmpty').querySelector('p').textContent = err.message;
+    }
+  } finally {
+    state.catalog.loading = false;
+    $('#catalogLoading').hidden = true;
   }
 }
 
-/* ---------- Fiche détaillée ---------- */
-async function openDetail(m) {
-  state.lastDetail = m;
-  $('#detailView').hidden = false;
-  $('#main').hidden = true;
-  window.scrollTo(0, 0);
-  const c = $('#detailContent');
-  c.innerHTML = '<div class="skeleton skel-hero-line"></div><div class="skeleton skel-hero-line" style="margin-top:8px"></div>';
+/* ==========================================================
+   4. PLANNING DE DIFFUSION (Airing Schedule)
+   ========================================================== */
+async function loadPlanning(dayOffset = 0) {
+  state.planningDay = dayOffset;
+  const grid = $('#planningGrid');
+  grid.innerHTML = '<div class="catalog-loading"><div class="spinner"></div></div>';
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 0, 0, 0);
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, 23, 59, 59);
+
+  const startSec = Math.floor(startOfDay.getTime() / 1000);
+  const endSec = Math.floor(endOfDay.getTime() / 1000);
+
+  const query = `
+    query ($start: Int, $end: Int) {
+      Page(perPage: 30) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          id episode airingAt
+          media {
+            id title { romaji english } coverImage { large }
+            format countryOfOrigin
+          }
+        }
+      }
+    }
+  `;
+
   try {
-    const data = await anilist(`query ($id: Int) { Media(id: $id) {
-      ${CARD_FIELDS} description(asHtml: false) genres episodes chapters volumes status
-      trailer { id site } externalLinks { site url }
-      characters(perPage: 8) { nodes { name { full } image { medium } } }
-    } }`, { id: m.id });
-    renderDetail(data.Media);
-  } catch (e) {
+    const data = await anilist(query, { start: startSec, end: endSec });
+    const schedules = data.Page.airingSchedules;
+
+    if (!schedules.length) {
+      grid.innerHTML = '<div class="catalog-empty"><div class="empty-icon">📅</div><h3>Aucune sortie planifiée</h3><p>Aucun nouvel épisode répertorié pour ce jour.</p></div>';
+      return;
+    }
+
+    grid.innerHTML = schedules.map(s => {
+      const m = s.media;
+      const date = new Date(s.airingAt * 1000);
+      const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const title = m.title.romaji || m.title.english;
+      return `
+        <div class="planning-card" data-id="${m.id}">
+          <div class="planning-poster">
+            <img loading="lazy" src="${m.coverImage?.large || ''}" alt="${title}">
+          </div>
+          <div class="planning-info">
+            <span class="planning-time">🕒 ${timeStr} (Japon)</span>
+            <strong class="planning-title">${title}</strong>
+            <span class="planning-episode">Épisode ${s.episode} • ${m.format || 'TV'}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.planning-card').forEach(el => {
+      el.addEventListener('click', () => {
+        window.location.hash = `#/anime/${el.dataset.id}`;
+      });
+    });
+  } catch (err) {
+    grid.innerHTML = `<div class="catalog-empty"><div class="empty-icon">⚠️</div><h3>Erreur du planning</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function initPlanningEvents() {
+  $$('#planningDays .day-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('#planningDays .day-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      loadPlanning(parseInt(tab.dataset.day, 10));
+    });
+  });
+}
+
+/* ==========================================================
+   5. FICHE DÉTAILLÉE
+   ========================================================== */
+async function loadDetail(id) {
+  const container = $('#detailContainer');
+  container.innerHTML = '<div class="catalog-loading" style="padding:100px 0"><div class="spinner"></div></div>';
+
+  const query = `
+    query ($id: Int) {
+      Media(id: $id) {
+        id title { romaji english native }
+        coverImage { extraLarge large color }
+        bannerImage averageScore format seasonYear status
+        description(asHtml: false) episodes chapters duration
+        genres studios(isMain: true) { nodes { name } }
+        trailer { id site } externalLinks { site url }
+        recommendations(perPage: 6) { nodes { mediaRecommendation { ${CARD_FIELDS} } } }
+      }
+    }
+  `;
+
+  try {
+    const data = await anilist(query, { id: parseInt(id, 10) });
+    const m = data.Media;
     renderDetail(m);
+  } catch (err) {
+    container.innerHTML = `<div class="catalog-empty"><div class="empty-icon">⚠️</div><h3>Impossible de charger la fiche</h3><p>${err.message}</p></div>`;
   }
 }
 
 function renderDetail(m) {
-  const title = m.title.romaji || m.title.english;
-  const c = $('#detailContent');
-  const actions = state.user ? `
-    <div class="hero-actions">
-      <button class="btn-primary" id="dFav">♥ Favori</button>
-      <button class="btn-secondary" id="dWatchlist">＋ À regarder</button>
-    </div>` : `<p class="card-sub">Connecte-toi pour ajouter à tes listes.</p>`;
-  c.innerHTML = `
-    <div class="hero" style="height:40vh;min-height:280px">
+  const title = m.title.romaji || m.title.english || m.title.native;
+  const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
+  const studio = m.studios?.nodes?.[0]?.name;
+  const recs = (m.recommendations?.nodes || []).map(r => r.mediaRecommendation).filter(Boolean);
+
+  const container = $('#detailContainer');
+  container.innerHTML = `
+    <div class="hero" style="height:44vh;min-height:300px">
       <div class="hero-backdrop" style="background-image:url(${m.bannerImage || m.coverImage?.extraLarge || ''})"></div>
       <div class="hero-fade"></div>
       <div class="hero-content">
         <h1 class="hero-title" style="font-size:clamp(22px,5vw,36px)">${title}</h1>
-        <span class="card-sub">${[m.format, m.seasonYear, m.status].filter(Boolean).join(' • ')} ${m.averageScore ? `• ★ ${(m.averageScore / 10).toFixed(1)}` : ''}</span>
-        ${actions}
+        <div class="hero-meta">
+          ${score ? `<span class="score">★ ${score}</span> • ` : ''}
+          <span>${[m.format, m.seasonYear, m.status].filter(Boolean).join(' • ')}</span>
+        </div>
+        <div class="hero-actions">
+          <button class="btn-primary" id="btnDetailFav">♥ Favori</button>
+          <button class="btn-secondary" id="btnDetailWatch">⏱ À regarder</button>
+          <button class="btn-secondary" id="btnDetailHist">👁 Déjà vu</button>
+        </div>
       </div>
     </div>
-    <div style="padding:16px">
-      <p class="hero-desc" style="-webkit-line-clamp:unset">${m.description || 'Synopsis indisponible.'}</p>
-      ${m.genres?.length ? `<div class="chip-row">${m.genres.map(g => `<span class="chip">${g}</span>`).join('')}</div>` : ''}
+
+    <div style="padding:20px 16px;max-width:960px;margin:0 auto">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px">Synopsis</h3>
+      <p class="hero-desc" style="-webkit-line-clamp:unset;font-size:14px;color:var(--text-muted);line-height:1.6">
+        ${m.description ? m.description.replace(/<[^>]*>?/gm, '') : 'Aucun synopsis disponible.'}
+      </p>
+
+      <div class="chip-row" style="margin-top:14px;flex-wrap:wrap">
+        ${(m.genres || []).map(g => `<span class="chip active">${g}</span>`).join('')}
+        ${studio ? `<span class="chip">Studio : ${studio}</span>` : ''}
+        ${m.episodes ? `<span class="chip">${m.episodes} épisodes</span>` : ''}
+      </div>
+
       ${m.trailer?.site === 'youtube' ? `
-        <h3 class="page-title" style="margin-top:20px;font-size:16px">Bande-annonce</h3>
-        <iframe style="width:100%;aspect-ratio:16/9;border:none;border-radius:14px" src="https://www.youtube-nocookie.com/embed/${m.trailer.id}" allowfullscreen loading="lazy"></iframe>` : ''}
-      ${m.characters?.nodes?.length ? `
-        <h3 class="page-title" style="margin-top:20px;font-size:16px">Personnages</h3>
-        <div class="feed-scroll">${m.characters.nodes.map(ch => `
-          <div class="card" style="flex:0 0 90px">
-            <div class="card-poster" style="aspect-ratio:1"><img loading="lazy" src="${ch.image?.medium || ''}" alt=""></div>
-            <span class="card-sub">${ch.name.full}</span>
-          </div>`).join('')}</div>` : ''}
-      ${m.externalLinks?.length ? `
-        <h3 class="page-title" style="margin-top:20px;font-size:16px">Regarder / lire (officiel)</h3>
-        <div class="chip-row">${m.externalLinks.filter(l => l.url).map(l => `<a class="chip" style="text-decoration:none" href="${l.url}" target="_blank" rel="noopener">${l.site}</a>`).join('')}</div>` : ''}
+        <h3 style="font-size:16px;font-weight:700;margin:28px 0 12px">Bande-annonce officielle</h3>
+        <div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;background:#000">
+          <iframe style="width:100%;height:100%;border:none" src="https://www.youtube-nocookie.com/embed/${m.trailer.id}" allowfullscreen loading="lazy"></iframe>
+        </div>` : ''}
+
+      ${(m.externalLinks || []).length ? `
+        <h3 style="font-size:16px;font-weight:700;margin:28px 0 12px">Diffusion officielle</h3>
+        <div class="chip-row" style="flex-wrap:wrap">
+          ${m.externalLinks.filter(l => l.url).map(l => `<a class="chip" style="text-decoration:none" href="${l.url}" target="_blank" rel="noopener">🔗 ${l.site}</a>`).join('')}
+        </div>` : ''}
+
+      ${recs.length ? `
+        <h3 style="font-size:16px;font-weight:700;margin:28px 0 12px">Titres similaires</h3>
+        <div class="feed-scroll" id="detailRecs"></div>` : ''}
     </div>`;
-  if (state.user) {
-    c.querySelector('#dFav').onclick = () => toggleList('favorites', m);
-    c.querySelector('#dWatchlist').onclick = () => toggleList('watchlist', m);
+
+  if (recs.length) {
+    fillFeedRow('detailRecs', recs);
   }
+
+  $('#btnDetailFav').onclick = () => toggleLibraryItem('favorites', m);
+  $('#btnDetailWatch').onclick = () => toggleLibraryItem('watchlist', m);
+  $('#btnDetailHist').onclick = () => toggleLibraryItem('history', m);
 }
 
-/* ---------- Bibliothèque (Firebase RTDB) ---------- */
-async function toggleList(list, m) {
-  if (!state.user) return toast('Connecte-toi d\u2019abord');
+/* ==========================================================
+   6. BIBLIOTHÈQUE & SYNCHRONISATION FIREBASE
+   ========================================================== */
+async function toggleLibraryItem(list, m) {
+  if (!state.user) {
+    $('#authModal').hidden = false;
+    return toast('Veuillez vous connecter d\u2019abord');
+  }
+
   const uid = state.user.uid;
   const key = `${mediaType(m)}-${m.id}`;
-  const node = ref(db, `${list}/${uid}/${key}`);
+  const itemRef = ref(db, `${list}/${uid}/${key}`);
+
   if (state.library[list]?.[key]) {
-    await remove(node);
-    toast('Retiré de ' + list);
+    await remove(itemRef);
+    toast(`Retiré de vos ${list === 'favorites' ? 'favoris' : list}`);
   } else {
-    await set(node, {
-      id: m.id, type: mediaType(m), title: m.title.romaji || m.title.english,
-      cover: m.coverImage?.large || '', score: m.averageScore || null,
-      format: m.format || null, year: m.seasonYear || null, addedAt: Date.now()
+    await set(itemRef, {
+      id: m.id,
+      type: mediaType(m),
+      title: m.title.romaji || m.title.english || 'Titre',
+      cover: m.coverImage?.large || m.coverImage?.extraLarge || '',
+      score: m.averageScore || null,
+      format: m.format || 'ANIME',
+      year: m.seasonYear || null,
+      addedAt: Date.now()
     });
-    toast('Ajouté à ' + list);
+    toast(`Ajouté à vos ${list === 'favorites' ? 'favoris' : list}`);
   }
 }
 
-function watchLibrary() {
+function watchLibraryData() {
   if (!state.user) return;
+  const uid = state.user.uid;
   ['favorites', 'watchlist', 'history'].forEach(list => {
-    onValue(ref(db, `${list}/${state.user.uid}`), snap => {
+    onValue(ref(db, `${list}/${uid}`), snap => {
       state.library[list] = snap.val() || {};
-      if (state.view === 'library') renderLibrary();
+      updateLibraryCounts();
+      if (state.currentRoute === 'library') renderLibrary();
     });
   });
+}
+
+function updateLibraryCounts() {
+  $('#countFav').textContent = Object.keys(state.library.favorites || {}).length;
+  $('#countWatch').textContent = Object.keys(state.library.watchlist || {}).length;
+  $('#countHist').textContent = Object.keys(state.library.history || {}).length;
 }
 
 function renderLibrary() {
-  const grid = $('#libraryGrid'), empty = $('#libraryEmpty');
-  const entries = Object.entries(state.library[state.libTab] || {});
-  if (!entries.length) {
+  const grid = $('#libraryGrid');
+  const empty = $('#libraryEmpty');
+  const items = Object.entries(state.library[state.libTab] || {});
+
+  if (!items.length) {
     grid.innerHTML = '';
     empty.hidden = false;
-    empty.textContent = state.user ? 'Cette liste est vide.' : 'Connecte-toi pour voir ta bibliothèque.';
+    $('#libEmptyTitle').textContent = state.user ? 'Cette liste est vide' : 'Connectez-vous pour voir votre bibliothèque';
     return;
   }
+
   empty.hidden = true;
-  grid.innerHTML = entries.map(([key, v]) => `
-    <article class="card" data-key="${key}">
-      <div class="card-poster"><img loading="lazy" src="${v.cover || ''}" alt="${v.title}">
-      ${v.score ? `<span class="card-score">★ ${(v.score / 10).toFixed(1)}</span>` : ''}</div>
+  grid.innerHTML = items.map(([key, v]) => `
+    <article class="card" data-key="${key}" data-id="${v.id}">
+      <div class="card-poster">
+        <img loading="lazy" src="${v.cover || ''}" alt="${v.title}">
+        ${v.score ? `<span class="card-score">★ ${(v.score / 10).toFixed(1)}</span>` : ''}
+        <span class="card-format">${v.format || 'ANIME'}</span>
+      </div>
       <h3 class="card-title">${v.title}</h3>
       <span class="card-sub">${[v.format, v.year].filter(Boolean).join(' • ')}</span>
     </article>`).join('');
+
   grid.querySelectorAll('.card').forEach(el => {
     el.addEventListener('click', () => {
-      const [, v] = entries.find(([k]) => k === el.dataset.key);
-      openDetail({ id: v.id, title: { romaji: v.title, english: v.title }, coverImage: { large: v.cover, extraLarge: v.cover }, averageScore: v.score, format: v.format, seasonYear: v.year });
+      window.location.hash = `#/anime/${el.dataset.id}`;
     });
   });
 }
 
-/* ---------- Navigation / vues ---------- */
-const VIEWS = ['home', 'search', 'library', 'calendar', 'profile'];
-
-function showView(v) {
-  state.view = v;
-  $('#main').hidden = v !== 'home';
-  $('#searchView').hidden = v !== 'search';
-  $('#libraryView').hidden = v !== 'library';
-  $('#detailView').hidden = true;
-  $$('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === v));
-  if (v === 'search') setTimeout(() => $('#searchInput').focus(), 150);
-  if (v === 'library') renderLibrary();
-  if (v === 'calendar') $('#main').hidden = true;
-  if (v !== 'home') window.scrollTo(0, 0);
+function initLibraryTabs() {
+  $$('#libTabs .chip').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('#libTabs .chip').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      state.libTab = tab.dataset.list;
+      renderLibrary();
+    });
+  });
 }
 
-function bindNav() {
-  document.addEventListener('click', e => {
-    const nav = e.target.closest('[data-nav]');
-    if (nav) { e.preventDefault(); showView(nav.dataset.nav); }
-    const close = e.target.closest('[data-close]');
-    if (close) close.closest('.modal').hidden = true;
+/* ==========================================================
+   7. NAVIGATION MOBILE (Tiroir) & AUTH MODAL
+   ========================================================== */
+function initNavigation() {
+  // Tiroir mobile
+  $('#btnDrawerOpen').addEventListener('click', () => {
+    $('#drawerOverlay').hidden = false;
   });
+  $('#btnDrawerClose').addEventListener('click', () => {
+    $('#drawerOverlay').hidden = true;
+  });
+  $('#drawerOverlay').addEventListener('click', (e) => {
+    if (e.target === $('#drawerOverlay')) $('#drawerOverlay').hidden = true;
+  });
+
+  // Bouton retour détail
   $('#btnBackDetail').addEventListener('click', () => {
-    $('#detailView').hidden = true;
-    $('#main').hidden = state.view !== 'home';
+    if (window.history.length > 1) window.history.back();
+    else window.location.hash = '#/';
   });
-  $('#btnSearch').addEventListener('click', () => showView('search'));
-  $$('#libTabs .chip').forEach(c => c.addEventListener('click', () => {
-    $$('#libTabs .chip').forEach(x => x.classList.remove('active'));
-    c.classList.add('active');
-    state.libTab = c.dataset.list;
-    renderLibrary();
-  }));
-}
 
-/* ---------- Authentification ---------- */
-let authMode = 'login';
-function bindAuth() {
-  $('#btnProfile').addEventListener('click', () => {
+  // Partage
+  $('#btnShareDetail').addEventListener('click', () => {
+    if (navigator.share) {
+      navigator.share({ title: document.title, url: window.location.href });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast('Lien copié dans le presse-papier !');
+    }
+  });
+
+  // Auth modal open/close
+  $('#btnUserMenu').addEventListener('click', () => {
+    if (state.user) window.location.hash = '#/profile';
+    else $('#authModal').hidden = false;
+  });
+  $('#sideUserChip').addEventListener('click', () => {
+    if (state.user) window.location.hash = '#/profile';
+    else $('#authModal').hidden = false;
+  });
+  $('#drawerUserCard').addEventListener('click', () => {
+    $('#drawerOverlay').hidden = true;
+    if (state.user) window.location.hash = '#/profile';
+    else $('#authModal').hidden = false;
+  });
+  $('#btnAuthClose').addEventListener('click', () => {
+    $('#authModal').hidden = true;
+  });
+  $('#btnOpenAuth').addEventListener('click', () => {
     if (state.user) {
-      if (confirm('Se déconnecter ?')) signOut(auth);
+      signOut(auth).then(() => toast('Déconnecté'));
     } else {
       $('#authModal').hidden = false;
     }
   });
-  $('#btnAuthMode').addEventListener('click', e => {
+}
+
+/* ==========================================================
+   8. AUTHENTIFICATION FIREBASE
+   ========================================================== */
+let authIsLogin = true;
+
+function initAuth() {
+  $('#btnAuthToggle').addEventListener('click', (e) => {
     e.preventDefault();
-    authMode = authMode === 'login' ? 'signup' : 'login';
-    $('#authTitle').textContent = authMode === 'login' ? 'Connexion' : 'Créer un compte';
-    $('#authSubmit').textContent = authMode === 'login' ? 'Se connecter' : 'Créer le compte';
-    $('#authSwitch').innerHTML = authMode === 'login'
-      ? 'Pas de compte ? <a href="#" id="btnAuthMode">Créer un compte</a>'
-      : 'Déjà un compte ? <a href="#" id="btnAuthMode">Se connecter</a>';
-    $('#btnAuthMode').addEventListener('click', arguments.callee ? (ev) => { ev.preventDefault(); $('#authModal').hidden = true; setTimeout(() => $('#btnProfile').click(), 10); } : null);
+    authIsLogin = !authIsLogin;
+    $('#authTitle').textContent = authIsLogin ? 'Connexion' : 'Créer un compte';
+    $('#authSubmit').textContent = authIsLogin ? 'Se connecter' : 'Créer le compte';
+    $('#authSwitchPrompt').textContent = authIsLogin ? "Vous n'avez pas de compte ?" : 'Déjà un compte ?';
+    $('#btnAuthToggle').textContent = authIsLogin ? 'Créer un compte' : 'Se connecter';
   });
-  $('#authForm').addEventListener('submit', async e => {
+
+  $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const err = $('#authError');
-    err.hidden = true;
+    const email = $('#authEmail').value.trim();
+    const pass = $('#authPass').value;
+    const errEl = $('#authError');
+    errEl.hidden = true;
+
     try {
-      const email = $('#authEmail').value, pass = $('#authPass').value;
-      if (authMode === 'login') await signInWithEmailAndPassword(auth, email, pass);
-      else await createUserWithEmailAndPassword(auth, email, pass);
+      if (authIsLogin) {
+        await signInWithEmailAndPassword(auth, email, pass);
+        toast('Connexion réussie !');
+      } else {
+        await createUserWithEmailAndPassword(auth, email, pass);
+        toast('Compte créé avec succès !');
+      }
       $('#authModal').hidden = true;
-      toast('Bienvenue !');
-    } catch (ex) {
-      err.textContent = ex.code === 'auth/invalid-credential' ? 'Email ou mot de passe incorrect.'
-        : ex.code === 'auth/email-already-in-use' ? 'Cet email est déjà utilisé.'
-        : ex.message;
-      err.hidden = false;
+    } catch (err) {
+      errEl.hidden = false;
+      errEl.textContent = err.code === 'auth/invalid-credential' ? 'Email ou mot de passe incorrect.'
+        : err.code === 'auth/email-already-in-use' ? 'Cette adresse email est déjà utilisée.'
+        : err.message;
+    }
+  });
+
+  onAuthStateChanged(auth, (user) => {
+    state.user = user;
+    if (user) {
+      const name = user.displayName || user.email.split('@')[0];
+      const avatar = user.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\'%3E%3Crect width=\'64\' height=\'64\' rx=\'32\' fill=\'%238b5cf6\'/%3E%3Ctext x=\'32\' y=\'40\' text-anchor=\'middle\' fill=\'%23ffffff\' font-size=\'22\' font-weight=\'bold\'%3E' + name[0].toUpperCase() + '%3C/text%3E%3C/svg%3E';
+
+      $('#navAvatar').src = avatar;
+      $('#sideAvatar').src = avatar;
+      $('#drawerAvatar').src = avatar;
+      $('#profileAvatarBig').src = avatar;
+
+      $('#sideUserName').textContent = name;
+      $('#sideUserRole').textContent = 'Membre Otaku';
+      $('#drawerUserName').textContent = name;
+      $('#drawerUserSub').textContent = 'Connecté';
+
+      $('#profileUsername').textContent = name;
+      $('#profileEmail').textContent = user.email;
+      $('#profileRoleBadge').textContent = 'Membre Otaku';
+      $('#btnOpenAuth').textContent = 'Se déconnecter';
+
+      watchLibraryData();
+    } else {
+      const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%231f2338'/%3E%3Cpath d='M32 20a8 8 0 100 16 8 8 0 000-16zM18 48c0-7.7 6.3-14 14-14s14 6.3 14 14' fill='%238c90a4'/%3E%3C/svg%3E";
+      $('#navAvatar').src = defaultAvatar;
+      $('#sideAvatar').src = defaultAvatar;
+      $('#drawerAvatar').src = defaultAvatar;
+      $('#profileAvatarBig').src = defaultAvatar;
+
+      $('#sideUserName').textContent = 'Invité';
+      $('#sideUserRole').textContent = 'Non connecté';
+      $('#drawerUserName').textContent = 'Invité';
+      $('#drawerUserSub').textContent = 'Se connecter';
+
+      $('#profileUsername').textContent = 'Invité';
+      $('#profileEmail').textContent = 'Non connecté';
+      $('#profileRoleBadge').textContent = 'Visiteur';
+      $('#btnOpenAuth').textContent = 'Se connecter / S\'inscrire';
+
+      state.library = { favorites: {}, watchlist: {}, history: {} };
+      updateLibraryCounts();
     }
   });
 }
 
-onAuthStateChanged(auth, async (user) => {
-  state.user = user;
-  if (user) {
-    $('#navAvatar').src = user.photoURL || $('#navAvatar').src;
-    await set(ref(db, `users/${user.uid}/profile`), {
-      email: user.email, username: user.displayName || user.email.split('@')[0], updatedAt: Date.now()
-    }, { merge: true }).catch(() => {});
-    watchLibrary();
-    toast('Connecté : ' + (user.displayName || user.email));
-  } else {
-    state.library = { favorites: {}, watchlist: {}, history: {} };
-    renderLibrary();
-  }
-});
-
-/* ---------- Boot ---------- */
+/* ==========================================================
+   9. DÉMARRAGE DE L'APPLICATION
+   ========================================================== */
 window.addEventListener('DOMContentLoaded', () => {
-  bindNav();
-  bindSearch();
-  bindAuth();
+  initNavigation();
+  initRouter();
+  initCatalogEvents();
+  initPlanningEvents();
+  initLibraryTabs();
+  initAuth();
   loadHome();
-  setTimeout(() => $('#splash').classList.add('hidden'), 600);
+
+  // Masquer le splash screen
+  setTimeout(() => {
+    const splash = $('#splash');
+    if (splash) splash.classList.add('hidden');
+  }, 500);
 });
 
+// PWA Service Worker
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
 }
