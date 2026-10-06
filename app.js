@@ -1075,6 +1075,7 @@ function initAuth() {
   onAuthStateChanged(auth, (user) => {
     state.user = user;
     if (user) {
+      reconcileMangaProgressWithFirebase(user);
       const name = user.displayName || user.email.split('@')[0];
       const avatar = user.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\'%3E%3Crect width=\'64\' height=\'64\' rx=\'32\' fill=\'%238b5cf6\'/%3E%3Ctext x=\'32\' y=\'40\' text-anchor=\'middle\' fill=\'%23ffffff\' font-size=\'22\' font-weight=\'bold\'%3E' + name[0].toUpperCase() + '%3C/text%3E%3C/svg%3E';
 
@@ -1677,6 +1678,8 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
   const readerView = $('#viewMangaReader');
   if (!readerView) return;
 
+  cancelNextChapterPrefetch();
+  announceReader('Chargement du chapitre...');
   readerView.hidden = false;
   $('#readerLoading').hidden = false;
   $('#readerPagesVertical').innerHTML = '';
@@ -1756,6 +1759,7 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
       img.addEventListener('error', () => {
         loader.remove();
         errBox.hidden = false;
+        announceReader('Erreur : impossible de charger la page ' + (idx + 1));
       });
 
       wrap.appendChild(img);
@@ -1763,8 +1767,14 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
       pagesFrag.appendChild(wrap);
     });
 
-    // Carte fin de chapitre : proposition d'ouvrir le chapitre suivant sans quitter le lecteur
+    // Déclenchement du préchargement des premières planches du chapitre suivant
     const hasNextChapter = currentMangaState.currentChapterIndex > 0;
+    if (hasNextChapter) {
+      const nextCh = currentMangaState.chapters[currentMangaState.currentChapterIndex - 1];
+      prefetchNextChapterPages(nextCh.id, currentMangaState.dataSaver);
+    }
+
+    // Carte fin de chapitre : proposition d'ouvrir le chapitre suivant sans quitter le lecteur
     const endCard = document.createElement('div');
     endCard.className = 'reader-end-card';
     if (hasNextChapter) {
@@ -1908,3 +1918,96 @@ function saveCurrentReaderProgress() {
     mangaTitle: currentMangaState.manga.title?.display || 'Manga'
   });
 }
+
+
+/* ==========================================================
+   ACCESSIBILITÉ & PRÉCHARGEMENT AVEC ANNULATION (Lecteur)
+   ========================================================== */
+function announceReader(message) {
+  const el = $('#readerLiveAnnouncer');
+  if (el) {
+    el.textContent = '';
+    setTimeout(() => { el.textContent = message; }, 50);
+  }
+}
+
+let nextChapterPrefetchController = null;
+
+function cancelNextChapterPrefetch() {
+  if (nextChapterPrefetchController) {
+    nextChapterPrefetchController.abort();
+    nextChapterPrefetchController = null;
+  }
+}
+
+async function prefetchNextChapterPages(nextChapterId, dataSaver) {
+  cancelNextChapterPrefetch();
+  const controller = new AbortController();
+  nextChapterPrefetchController = controller;
+
+  try {
+    const data = await mangadexAdapter.getChapterPages(nextChapterId, { dataSaver });
+    if (controller.signal.aborted) return;
+    // Précharger en mémoire les 4 premières images
+    const toPreload = data.pages.slice(0, 4);
+    toPreload.forEach(p => {
+      if (controller.signal.aborted) return;
+      const img = new Image();
+      img.src = p.url;
+    });
+  } catch (e) {
+    // Ignorer les erreurs silencieuses de préchargement
+  }
+}
+
+// Raccourcis clavier pour le lecteur manga
+window.addEventListener('keydown', (e) => {
+  const readerView = $('#viewMangaReader');
+  if (!readerView || readerView.hidden) return;
+
+  const container = $('#readerContainer') || window;
+  const isScrollable = container === window ? document.documentElement : container;
+
+  switch (e.key) {
+    case 'Escape':
+      saveCurrentReaderProgress();
+      cancelNextChapterPrefetch();
+      readerView.hidden = true;
+      announceReader('Lecteur fermé');
+      break;
+    case 'ArrowRight':
+    case ']': {
+      const btnNext = $('#btnNextChapter');
+      if (btnNext && !btnNext.disabled) {
+        btnNext.click();
+        announceReader('Chargement du chapitre suivant');
+      }
+      break;
+    }
+    case 'ArrowLeft':
+    case '[': {
+      const btnPrev = $('#btnPrevChapter');
+      if (btnPrev && !btnPrev.disabled) {
+        btnPrev.click();
+        announceReader('Chargement du chapitre précédent');
+      }
+      break;
+    }
+    case 'ArrowDown':
+    case 'j':
+      isScrollable.scrollBy({ top: 300, behavior: 'smooth' });
+      break;
+    case 'ArrowUp':
+    case 'k':
+      isScrollable.scrollBy({ top: -300, behavior: 'smooth' });
+      break;
+    case 'f':
+    case 'F':
+      if (!document.fullscreenElement) {
+        readerView.requestFullscreen?.().catch(() => {});
+      } else {
+        document.exitFullscreen?.().catch(() => {});
+      }
+      break;
+  }
+});
