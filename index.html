@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#07080f">
-<title>Otaku-World — Anime & Manga</title>
+<title>KOVA — Anime • Manga • Stories</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://graphql.anilist.co">
 <link rel="stylesheet" href="style.css">
@@ -31,7 +31,7 @@
 
 <div id="splash">
   <div class="splash-inner">
-    <div class="splash-logo">OTAKU<span>WORLD</span></div>
+    <div class="splash-logo"><img src="kova-logo.png" alt="KOVA" style="max-height:48px;vertical-align:middle;filter:drop-shadow(0 0 16px rgba(139,92,246,0.6));"></div>
     <div class="splash-spinner"></div>
   </div>
 </div>
@@ -42,7 +42,7 @@
     <button class="icon-btn" id="btnDrawerOpen" aria-label="Ouvrir le menu">
       <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
     </button>
-    <a class="brand" href="#/">OTAKU<span>WORLD</span></a>
+    <a class="brand" href="#/" style="display:flex;align-items:center;gap:8px;"><img src="kova-logo.png" alt="KOVA" style="height:32px;"></a>
   </div>
 
   <div class="top-search-bar" id="topSearchBar">
@@ -64,7 +64,7 @@
 <div id="drawerOverlay" class="drawer-overlay" hidden>
   <aside id="drawer" class="drawer">
     <div class="drawer-head">
-      <div class="brand">OTAKU<span>WORLD</span></div>
+      <div class="brand" style="display:flex;align-items:center;gap:8px;"><img src="kova-logo.png" alt="KOVA" style="height:32px;"></div>
       <button class="icon-btn" id="btnDrawerClose" aria-label="Fermer le menu">&times;</button>
     </div>
     <div class="drawer-user" id="drawerUserCard">
@@ -84,7 +84,7 @@
       <a href="#/profile" class="drawer-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Mon profil & réglages</span></a>
     </nav>
     <div class="drawer-footer">
-      <div class="drawer-badge">v1.0 • Otaku-World</div>
+      <div class="drawer-badge">KOVA • Anime • Manga • Stories</div>
     </div>
   </aside>
 </div>
@@ -134,6 +134,22 @@
 <main id="appContent">
   <!-- Page 1 : Accueil -->
   <section id="viewHome" class="view-page active">
+    <!-- Bannière KOVA avec mascotte -->
+    <div class="kova-mascot-banner">
+      <div class="kova-banner-content">
+        <div class="kova-badge-pill">✨ NOUVELLE EXPÉRIENCE KOVA</div>
+        <h1 class="kova-banner-title">Votre univers <span class="text-gradient">Anime & Manga</span> illimité</h1>
+        <p class="kova-banner-desc">Explorez des milliers d'œuvres, suivez vos sorties simulcast en direct et plongez dans vos chapitres préférés avec fluidité.</p>
+        <div class="kova-banner-actions">
+          <a href="#/catalogue" class="btn-primary">Explorer le catalogue</a>
+          <a href="#/planning" class="btn-secondary">Voir le planning</a>
+        </div>
+      </div>
+      <div class="kova-mascot-visual">
+        <img src="kova-mascot.png" alt="Mascotte KOVA" class="kova-mascot-img">
+      </div>
+    </div>
+
     <!-- Hero Slider -->
     <div class="hero" id="hero">
       <div class="hero-backdrop" id="heroBackdrop"></div>
@@ -145,7 +161,16 @@
       <div class="hero-dots" id="heroDots"></div>
     </div>
 
-    <!-- Feed Carousels -->
+    <!-- Section Reprise de lecture (si en cours) -->
+    <div class="section-block" id="homeResumeSection" hidden>
+      <div class="section-header">
+        <h2 class="section-title">📖 Reprendre la lecture</h2>
+        <span class="section-badge">Vos lectures en cours</span>
+      </div>
+      <div class="resume-grid" id="homeResumeGrid"></div>
+    </div>
+
+    <!-- Feed Carousels (Anime populaires, Manga populaires, Nouveaux chapitres, Planning) -->
     <div class="feed-container" id="feedContainer"></div>
   </section>
 
@@ -168,12 +193,24 @@
       <div class="filters-scroll">
         <!-- Types -->
         <div class="filter-group">
-          <span class="filter-label">Format</span>
+          <span class="filter-label">Type</span>
           <div class="chip-row" id="filterFormat">
             <button class="chip active" data-val="ALL">Tous</button>
-            <button class="chip" data-val="TV">Séries TV</button>
+            <button class="chip" data-val="ANIME">Anime (Séries)</button>
             <button class="chip" data-val="MOVIE">Films</button>
-            <button class="chip" data-val="MANGA">Mangas</button>
+            <button class="chip" data-val="MANGA">Manga</button>
+            <button class="chip" data-val="MANHWA">Manhwa</button>
+            <button class="chip" data-val="MANHUA">Manhua</button>
+          </div>
+        </div>
+
+        <!-- Statut -->
+        <div class="filter-group">
+          <span class="filter-label">Statut</span>
+          <div class="chip-row" id="filterStatus">
+            <button class="chip active" data-status="ALL">Tous</button>
+            <button class="chip" data-status="RELEASING">En cours</button>
+            <button class="chip" data-status="FINISHED">Terminé</button>
           </div>
         </div>
 
@@ -217,6 +254,12 @@
       <div class="empty-icon">🔍</div>
       <h3>Aucun résultat trouvé</h3>
       <p>Essaie de modifier tes filtres ou ta recherche.</p>
+    </div>
+    <!-- Pagination Complète -->
+    <div class="catalog-pagination-bar" id="catalogPaginationBar">
+      <button type="button" class="btn-secondary" id="btnCatalogPrevPage" disabled>← Page précédente</button>
+      <span class="catalog-page-indicator" id="catalogPageIndicator">Page 1</span>
+      <button type="button" class="btn-secondary" id="btnCatalogNextPage">Page suivante →</button>
     </div>
     <div class="catalog-more-wrap" id="catalogMoreWrap" hidden>
       <button class="btn-secondary" id="btnLoadMore">Charger plus de titres</button>
@@ -287,38 +330,106 @@
   <!-- Page 5 : Profil & Paramètres -->
   <section id="viewProfile" class="view-page" hidden>
     <div class="profile-card" id="profileCard">
-      <div class="profile-banner"></div>
+      <div class="profile-banner">
+        <div class="profile-banner-overlay"></div>
+      </div>
       <div class="profile-meta">
         <div class="profile-avatar-wrap">
-          <img id="profileAvatarBig" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' rx='60' fill='%231f2338'/%3E%3Cpath d='M60 38a16 16 0 100 32 16 16 0 000-32zM32 94c0-15.5 12.5-28 28-28s28 12.5 28 28' fill='%238c90a4'/%3E%3C/svg%3E">
+          <img id="profileAvatarBig" alt="Avatar KOVA" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='120' height='120' rx='60' fill='%231f2338'/%3E%3Cpath d='M60 38a16 16 0 100 32 16 16 0 000-32zM32 94c0-15.5 12.5-28 28-28s28 12.5 28 28' fill='%238c90a4'/%3E%3C/svg%3E">
+          <button type="button" class="btn-avatar-edit" id="btnChangeAvatar" title="Changer d'avatar">✏️</button>
         </div>
         <div class="profile-names">
-          <h2 id="profileUsername">Invité</h2>
-          <span class="profile-badge" id="profileRoleBadge">Visiteur</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <h2 id="profileUsername">Invité</h2>
+            <span class="profile-badge" id="profileRoleBadge">Membre KOVA</span>
+          </div>
           <p id="profileEmail" class="profile-email">Non connecté</p>
         </div>
         <div class="profile-actions" id="profileActions">
           <button class="btn-primary" id="btnOpenAuth">Se connecter / S'inscrire</button>
         </div>
       </div>
+
+      <!-- Progression XP et Niveau KOVA -->
+      <div class="kova-xp-card" id="profileXpCard">
+        <div class="kova-xp-header">
+          <div class="kova-level-tag">Niveau <span id="userLevelNum">1</span></div>
+          <div class="kova-xp-stats"><span id="userXpCurrent">0</span> / <span id="userXpNext">100</span> XP</div>
+        </div>
+        <div class="kova-xp-bar-bg">
+          <div class="kova-xp-bar-fill" id="userXpBarFill" style="width: 0%;"></div>
+        </div>
+        <p class="kova-xp-hint">💡 Gagnez de l'XP en lisant des chapitres (+50 XP) et en consultant des fiches anime (+20 XP) !</p>
+      </div>
+
+      <!-- Galerie des Badges KOVA -->
+      <div class="kova-badges-section">
+        <h3 class="kova-section-subtitle">🏆 Badges & Succès KOVA</h3>
+        <div class="kova-badges-grid" id="profileBadgesGrid">
+          <div class="kova-badge-item unlocked" data-badge="welcome">
+            <div class="badge-icon">🦊</div>
+            <div class="badge-title">Pionnier KOVA</div>
+            <div class="badge-desc">A rejoint l'aventure</div>
+          </div>
+          <div class="kova-badge-item" id="badgeReader" data-badge="reader">
+            <div class="badge-icon">📖</div>
+            <div class="badge-title">Lecteur Assidu</div>
+            <div class="badge-desc">10+ chapitres lus</div>
+          </div>
+          <div class="kova-badge-item" id="badgeOtaku" data-badge="otaku">
+            <div class="badge-icon">⚡</div>
+            <div class="badge-title">Otaku d'Élite</div>
+            <div class="badge-desc">Niveau 5 atteint</div>
+          </div>
+          <div class="kova-badge-item" id="badgeCollector" data-badge="collector">
+            <div class="badge-icon">⭐</div>
+            <div class="badge-title">Collectionneur</div>
+            <div class="badge-desc">5+ favoris enregistrés</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sélecteur d'avatars modal caché -->
+    <div id="avatarPickerModal" class="modal" hidden>
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Choisir un avatar KOVA</h3>
+          <button class="btn-icon" id="btnCloseAvatarPicker">&times;</button>
+        </div>
+        <div class="avatar-choices-grid" id="avatarChoicesGrid"></div>
+      </div>
     </div>
 
     <div class="settings-grid">
       <div class="settings-box">
-        <h3>⚡ Préférences d'affichage</h3>
+        <h3>📖 Paramètres de lecture</h3>
         <label class="setting-row">
-          <span>Mode données réduites</span>
+          <div>
+            <strong>Mode économie de données</strong>
+            <p style="font-size:12px;color:var(--text-muted)">Charge les planches manga en qualité compressée pour économiser votre forfait.</p>
+          </div>
           <input type="checkbox" id="chkDataSaver">
         </label>
         <label class="setting-row">
-          <span>Lecteur automatique des bandes-annonces</span>
+          <div>
+            <strong>Mode Webtoon continu</strong>
+            <p style="font-size:12px;color:var(--text-muted)">Défilement vertical fluide adapté aux smartphones.</p>
+          </div>
+          <input type="checkbox" id="chkWebtoonMode" checked>
+        </label>
+        <label class="setting-row">
+          <div>
+            <strong>Autoplay des bandes-annonces</strong>
+            <p style="font-size:12px;color:var(--text-muted)">Lance automatiquement les trailers vidéo YouTube sur les fiches.</p>
+          </div>
           <input type="checkbox" id="chkAutoplayTrailer" checked>
         </label>
       </div>
 
       <div class="settings-box">
-        <h3>🛡️ À propos d'Otaku-World</h3>
-        <p class="settings-text">Otaku-World v1.0 — Plateforme communautaire de suivi d'animes & mangas connectée aux APIs AniList et Firebase.</p>
+        <h3>🛡️ À propos de KOVA</h3>
+        <p class="settings-text">KOVA — Plateforme moderne Anime • Manga • Stories propulsée par AniList GraphQL, MangaDex API et Firebase.</p>
         <div class="settings-links">
           <a href="https://github.com/archange22/Otaku-world-" target="_blank" rel="noopener">Dépôt GitHub</a>
           <a href="https://site-otaku-f9a94.web.app" target="_blank" rel="noopener">Lien direct Firebase</a>
@@ -354,6 +465,9 @@
       <div class="reader-header-right">
         <button type="button" class="chip chip-reader" id="btnToggleDataSaver" title="Activer/Désactiver le mode économie de données">
           <span id="dataSaverIndicator">⚡ Haute Qualité</span>
+        </button>
+        <button type="button" class="icon-btn" id="btnToggleFullscreen" aria-label="Mode plein écran" title="Plein écran">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
         <div class="reader-page-counter" id="readerPageCounter">Page 1 / 1</div>
       </div>
@@ -405,7 +519,7 @@
   <div class="modal-card">
     <button class="icon-btn modal-close" id="btnAuthClose" aria-label="Fermer">&times;</button>
     <div class="auth-header">
-      <div class="brand">OTAKU<span>WORLD</span></div>
+      <div class="brand" style="display:flex;align-items:center;gap:8px;"><img src="kova-logo.png" alt="KOVA" style="height:32px;"></div>
       <h3 id="authTitle" style="margin-top:8px">Connexion</h3>
       <p id="authSubtitle" style="font-size:13px;color:var(--text-muted)">Synchronisez vos favoris et votre progression sur tous vos appareils.</p>
     </div>

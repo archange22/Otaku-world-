@@ -169,6 +169,7 @@ export class MangaDexAdapter {
     genres = [],
     demographic = [],
     status = [],
+    originalLanguage = null,
     sort = 'followedCount',
     sortOrder = 'desc',
     limit = 24,
@@ -208,6 +209,17 @@ export class MangaDexAdapter {
     if (Array.isArray(status)) {
       for (const s of status) {
         if (s && s !== 'ALL') params.append('status[]', s.toLowerCase());
+      }
+    } else if (status && status !== 'ALL') {
+      params.append('status[]', status.toLowerCase());
+    }
+
+    // Filtre par langue d'origine (type : manga = ja, manhwa = ko, manhua = zh)
+    if (originalLanguage) {
+      if (Array.isArray(originalLanguage)) {
+        for (const ol of originalLanguage) params.append('originalLanguage[]', ol);
+      } else if (originalLanguage !== 'ALL') {
+        params.append('originalLanguage[]', originalLanguage);
       }
     }
 

@@ -279,78 +279,197 @@ async function loadHome() {
   const container = $('#feedContainer');
   if (!container) return;
 
+  renderHomeResume();
+
   container.innerHTML = `
     <div class="section-block">
       <div class="section-header">
-        <h2 class="section-title">🔥 Tendances Manga & Webtoon</h2>
+        <h2 class="section-title">✨ Anime Populaires</h2>
+        <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Tout voir →</a>
       </div>
-      <div class="carousel" id="carouselTrendingManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+      <div class="carousel" id="carouselPopularAnime"><div class="catalog-loading"><div class="spinner"></div></div></div>
     </div>
+
     <div class="section-block">
       <div class="section-header">
-        <h2 class="section-title">⭐ Les Mieux Notés</h2>
+        <h2 class="section-title">🔥 Manga Populaires</h2>
+        <a href="#/catalogue" class="section-badge" style="text-decoration:none;">Tout voir →</a>
       </div>
-      <div class="carousel" id="carouselTopManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+      <div class="carousel" id="carouselPopularManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
     </div>
+
     <div class="section-block">
       <div class="section-header">
-        <h2 class="section-title">⚡ Derniers Ajouts & Chapitres</h2>
+        <h2 class="section-title">⚡ Nouveaux Chapitres & Sorties Récentes</h2>
       </div>
       <div class="carousel" id="carouselLatestManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">📅 Planning Simulcast (Sorties du jour)</h2>
+        <a href="#/planning" class="section-badge" style="text-decoration:none;">Planning complet →</a>
+      </div>
+      <div class="carousel" id="carouselHomePlanning"><div class="catalog-loading"><div class="spinner"></div></div></div>
     </div>
   `;
 
   try {
-    // 1. Tendances
-    const trendingRes = await mangadexAdapter.getCatalogue({ sort: 'followedCount', limit: 12 });
-    const trendingItems = trendingRes.items.map(m => ({
-      id: m.id,
-      format: m.type.toUpperCase(),
-      title: { romaji: m.title.display },
-      coverImage: { large: m.coverUrl },
-      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
-      seasonYear: m.year,
-      isMangaDex: true
-    }));
-    $('#carouselTrendingManga').innerHTML = trendingItems.map(cardHTML).join('');
-    bindCards($('#carouselTrendingManga'), trendingItems);
+    // 1. Anime populaires (AniList)
+    const animeQuery = `
+      query {
+        Page(page: 1, perPage: 12) {
+          media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+            ${CARD_FIELDS}
+          }
+        }
+      }
+    `;
+    anilist(animeQuery).then(data => {
+      const animes = data?.Page?.media || [];
+      if (animes.length) {
+        $('#carouselPopularAnime').innerHTML = animes.map(cardHTML).join('');
+        bindCards($('#carouselPopularAnime'), animes);
+        
+        // Initialiser le Hero avec les 5 animes populaires
+        state.heroMedia = animes.slice(0, 5);
+        renderHero();
+      }
+    }).catch(err => {
+      console.warn('Erreur chargement anime populaires:', err);
+      $('#carouselPopularAnime').innerHTML = '<p style="padding:16px;color:#888;">Données indisponibles.</p>';
+    });
 
-    // Initialiser le Hero avec les 5 premiers mangas tendances
-    state.heroMedia = trendingItems.slice(0, 5);
-    renderHero();
+    // 2. Manga populaires (MangaDex)
+    mangadexAdapter.getCatalogue({ sort: 'followedCount', limit: 12 }).then(res => {
+      const items = (res.items || []).map(m => ({
+        id: m.id,
+        format: m.type.toUpperCase(),
+        title: { romaji: m.title.display, english: m.title.en },
+        coverImage: { large: m.coverUrl, medium: m.coverUrl, extraLarge: m.coverUrl },
+        averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
+        seasonYear: m.year,
+        isMangaDex: true,
+        mangaData: m
+      }));
+      $('#carouselPopularManga').innerHTML = items.map(cardHTML).join('');
+      bindCards($('#carouselPopularManga'), items);
+    }).catch(err => {
+      console.warn('Erreur chargement manga populaires:', err);
+      $('#carouselPopularManga').innerHTML = '<p style="padding:16px;color:#888;">Données indisponibles.</p>';
+    });
 
-    // 2. Mieux notés
-    const topRes = await mangadexAdapter.getCatalogue({ sort: 'rating', limit: 12 });
-    const topItems = topRes.items.map(m => ({
-      id: m.id,
-      format: m.type.toUpperCase(),
-      title: { romaji: m.title.display },
-      coverImage: { large: m.coverUrl },
-      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
-      seasonYear: m.year,
-      isMangaDex: true
-    }));
-    $('#carouselTopManga').innerHTML = topItems.map(cardHTML).join('');
-    bindCards($('#carouselTopManga'), topItems);
+    // 3. Nouveaux chapitres (MangaDex)
+    mangadexAdapter.getCatalogue({ sort: 'latest', limit: 12 }).then(res => {
+      const items = (res.items || []).map(m => ({
+        id: m.id,
+        format: m.type.toUpperCase(),
+        title: { romaji: m.title.display, english: m.title.en },
+        coverImage: { large: m.coverUrl, medium: m.coverUrl, extraLarge: m.coverUrl },
+        averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
+        seasonYear: m.year,
+        isMangaDex: true,
+        mangaData: m
+      }));
+      $('#carouselLatestManga').innerHTML = items.map(cardHTML).join('');
+      bindCards($('#carouselLatestManga'), items);
+    }).catch(err => {
+      console.warn('Erreur chargement nouveautés manga:', err);
+      $('#carouselLatestManga').innerHTML = '<p style="padding:16px;color:#888;">Données indisponibles.</p>';
+    });
 
-    // 3. Derniers ajouts
-    const latestRes = await mangadexAdapter.getCatalogue({ sort: 'latest', limit: 12 });
-    const latestItems = latestRes.items.map(m => ({
-      id: m.id,
-      format: m.type.toUpperCase(),
-      title: { romaji: m.title.display },
-      coverImage: { large: m.coverUrl },
-      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
-      seasonYear: m.year,
-      isMangaDex: true
-    }));
-    $('#carouselLatestManga').innerHTML = latestItems.map(cardHTML).join('');
-    bindCards($('#carouselLatestManga'), latestItems);
+    // 4. Planning Simulcast du jour
+    const now = Math.floor(Date.now() / 1000);
+    const dayStart = now - (now % 86400);
+    const dayEnd = dayStart + 86400;
+    const planQuery = `
+      query ($airingAt_greater: Int, $airingAt_lesser: Int) {
+        Page(page: 1, perPage: 12) {
+          airingSchedules(airingAt_greater: $airingAt_greater, airingAt_lesser: $airingAt_lesser, sort: TIME) {
+            id episode airingAt
+            media { ${CARD_FIELDS} }
+          }
+        }
+      }
+    `;
+    anilist(planQuery, { airingAt_greater: dayStart, airingAt_lesser: dayEnd }).then(data => {
+      const schedules = data?.Page?.airingSchedules || [];
+      const planItems = schedules.map(s => s.media).filter(Boolean);
+      if (planItems.length) {
+        $('#carouselHomePlanning').innerHTML = planItems.map(cardHTML).join('');
+        bindCards($('#carouselHomePlanning'), planItems);
+      } else {
+        $('#carouselHomePlanning').innerHTML = '<p style="padding:16px;color:#888;">Aucune diffusion prévue aujourd'hui.</p>';
+      }
+    }).catch(err => {
+      console.warn('Erreur planning simulcast accueil:', err);
+      $('#carouselHomePlanning').innerHTML = '<p style="padding:16px;color:#888;">Données planning indisponibles.</p>';
+    });
 
   } catch (err) {
-    console.error('Erreur chargement accueil manga:', err);
+    console.error('Erreur globale chargement accueil:', err);
   }
 }
+
+function renderHomeResume() {
+  const section = $('#homeResumeSection');
+  const grid = $('#homeResumeGrid');
+  if (!section || !grid) return;
+
+  try {
+    const raw = localStorage.getItem('otaku_manga_progress');
+    const allProgress = raw ? JSON.parse(raw) : {};
+    const entries = Object.entries(allProgress);
+
+    if (!entries.length) {
+      section.hidden = true;
+      return;
+    }
+
+    // Trier les plus récemment lus
+    entries.sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0));
+    const recent = entries.slice(0, 4);
+
+    grid.innerHTML = recent.map(([mId, prog]) => {
+      const title = prog.mangaTitle || 'Manga';
+      const ch = prog.chapterNumber || '1';
+      const page = prog.page || 1;
+      const progressPercent = Math.min(100, Math.round((page / 30) * 100)); // estimation page ou %
+      return `
+        <div class="resume-card" data-manga-id="${mId}" data-chapter-id="${prog.chapterId || ''}" data-page="${page}">
+          <div class="resume-poster" style="display:flex;align-items:center;justify-content:center;background:#1e2338;color:#a78bfa;font-size:24px;">📖</div>
+          <div class="resume-info">
+            <h4 class="resume-title">${title}</h4>
+            <div class="resume-sub">Chapitre ${ch} • Page ${page}</div>
+            <div class="resume-progress-bg">
+              <div class="resume-progress-bar" style="width: ${progressPercent}%;"></div>
+            </div>
+            <span class="resume-btn">▶ Reprendre</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.resume-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const mId = card.dataset.mangaId;
+        const chId = card.dataset.chapterId;
+        const p = parseInt(card.dataset.page, 10) || 1;
+        if (mId && chId) {
+          openMangaReader(mId, chId, p);
+        } else if (mId) {
+          window.openMangaDetail(mId);
+        }
+      });
+    });
+
+    section.hidden = false;
+  } catch (e) {
+    console.warn('Erreur lecture progression:', e);
+    section.hidden = true;
+  }
+}
+
 
 
 function fillFeedRow(rowId, list) {
@@ -442,80 +561,98 @@ function renderHeroItem(m) {
    ========================================================== */
 let catalogSearchTimer;
 
+
+// État enrichi du catalogue
+state.catalog.status = 'ALL';
+state.catalog.type = 'ALL';
+
 function initCatalogEvents() {
-  $('#catSearchInput').addEventListener('input', (e) => {
-    const val = e.target.value.trim();
-    $('#catSearchClear').hidden = !val;
-    clearTimeout(catalogSearchTimer);
-    catalogSearchTimer = setTimeout(() => {
-      state.catalog.query = val;
+  const searchInput = $('#catSearchInput');
+  const clearBtn = $('#catSearchClear');
+
+  let debounceTimer;
+  searchInput?.addEventListener('input', (e) => {
+    clearTimeout(debounceTimer);
+    const q = e.target.value.trim();
+    if (clearBtn) clearBtn.hidden = !q;
+    debounceTimer = setTimeout(() => {
+      state.catalog.query = q;
+      state.catalog.page = 1;
       fetchCatalog(true);
-    }, 400);
+    }, 350);
   });
 
-  $('#catSearchClear').addEventListener('click', () => {
-    $('#catSearchInput').value = '';
-    $('#catSearchClear').hidden = true;
+  clearBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    clearBtn.hidden = true;
     state.catalog.query = '';
+    state.catalog.page = 1;
     fetchCatalog(true);
   });
 
-  // Filtre Format (TV, MOVIE, MANGA)
-  $$('#filterFormat .chip').forEach(btn => {
+  // Filtre Format / Type
+  $('#filterFormat')?.querySelectorAll('.chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('#filterFormat .chip').forEach(c => c.classList.remove('active'));
+      $('#filterFormat .chip.active')?.classList.remove('active');
       btn.classList.add('active');
       state.catalog.format = btn.dataset.val;
+      state.catalog.page = 1;
       fetchCatalog(true);
     });
   });
 
-  // Filtre Tri (Tendances, Popularité, Mieux notés, Nouveautés)
-  $$('#filterSort .chip').forEach(btn => {
+  // Filtre Statut
+  $('#filterStatus')?.querySelectorAll('.chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('#filterSort .chip').forEach(c => c.classList.remove('active'));
+      $('#filterStatus .chip.active')?.classList.remove('active');
+      btn.classList.add('active');
+      state.catalog.status = btn.dataset.status;
+      state.catalog.page = 1;
+      fetchCatalog(true);
+    });
+  });
+
+  // Filtre Tri
+  $('#filterSort')?.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('#filterSort .chip.active')?.classList.remove('active');
       btn.classList.add('active');
       state.catalog.sort = btn.dataset.val;
+      state.catalog.page = 1;
       fetchCatalog(true);
     });
   });
 
-  // Filtre Genre
-  $$('#filterGenres .chip').forEach(btn => {
+  // Filtre Genres
+  $('#filterGenres')?.querySelectorAll('.chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('#filterGenres .chip').forEach(c => c.classList.remove('active'));
+      $('#filterGenres .chip.active')?.classList.remove('active');
       btn.classList.add('active');
-      state.catalog.genre = btn.dataset.genre;
+      state.catalog.genre = btn.dataset.genre || '';
+      state.catalog.page = 1;
       fetchCatalog(true);
     });
   });
 
   // Bouton Charger Plus
-  $('#btnLoadMore').addEventListener('click', () => {
-    if (!state.catalog.loading && state.catalog.hasNextPage) {
-      state.catalog.page++;
-      fetchCatalog(false);
-    }
+  $('#btnLoadMore')?.addEventListener('click', () => {
+    state.catalog.page += 1;
+    fetchCatalog(false);
   });
 
-  // Raccourci touche '/' pour la recherche
-  window.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-      e.preventDefault();
-      window.location.hash = '#/catalogue';
-      setTimeout(() => $('#catSearchInput').focus(), 150);
-    }
-  });
-
-  // Barre de recherche dans le topbar
-  $('#quickSearchInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const q = e.target.value.trim();
-      window.location.hash = '#/catalogue';
-      $('#catSearchInput').value = q;
-      state.catalog.query = q;
+  // Pagination Page Précédente / Suivante
+  $('#btnCatalogPrevPage')?.addEventListener('click', () => {
+    if (state.catalog.page > 1) {
+      state.catalog.page -= 1;
       fetchCatalog(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  });
+
+  $('#btnCatalogNextPage')?.addEventListener('click', () => {
+    state.catalog.page += 1;
+    fetchCatalog(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
 
@@ -524,8 +661,6 @@ async function fetchCatalog(reset = false) {
   state.catalog.loading = true;
 
   if (reset) {
-    state.catalog.page = 1;
-    state.catalog.items = [];
     $('#catalogGrid').innerHTML = '';
     $('#catalogEmpty').hidden = true;
   }
@@ -533,8 +668,16 @@ async function fetchCatalog(reset = false) {
   $('#catalogLoading').hidden = false;
   $('#catalogMoreWrap').hidden = true;
 
-  // --- BRANCHEMENT MANGA : MangaDex Adapter ---
-  if (state.catalog.format === 'MANGA') {
+  const fmt = state.catalog.format || 'ALL';
+  const isMangaDexSearch = ['MANGA', 'MANHWA', 'MANHUA'].includes(fmt);
+
+  // Mettre à jour l'indicateur de page
+  const pageInd = $('#catalogPageIndicator');
+  if (pageInd) pageInd.textContent = `Page ${state.catalog.page}`;
+  const btnPrev = $('#btnCatalogPrevPage');
+  if (btnPrev) btnPrev.disabled = state.catalog.page <= 1;
+
+  if (isMangaDexSearch) {
     try {
       let mdSort = 'followedCount';
       let mdSortOrder = 'desc';
@@ -542,10 +685,21 @@ async function fetchCatalog(reset = false) {
       else if (state.catalog.sort === 'START_DATE_DESC') mdSort = 'latest';
       else if (state.catalog.sort === 'TITLE_ROMAJI') { mdSort = 'title'; mdSortOrder = 'asc'; }
 
+      let langFilter = null;
+      if (fmt === 'MANGA') langFilter = 'ja';
+      else if (fmt === 'MANHWA') langFilter = 'ko';
+      else if (fmt === 'MANHUA') langFilter = 'zh';
+
+      let statusParam = [];
+      if (state.catalog.status === 'RELEASING') statusParam = ['ongoing'];
+      else if (state.catalog.status === 'FINISHED') statusParam = ['completed'];
+
       const mangaRes = await mangadexAdapter.getCatalogue({
         query: state.catalog.query || '',
         sort: mdSort,
         sortOrder: mdSortOrder,
+        originalLanguage: langFilter,
+        status: statusParam,
         page: state.catalog.page,
         limit: 24
       });
@@ -570,13 +724,16 @@ async function fetchCatalog(reset = false) {
       }));
 
       state.catalog.hasNextPage = mangaRes.hasMore;
-      state.catalog.items = reset ? mangaItems : [...state.catalog.items, ...mangaItems];
+      const btnNext = $('#btnCatalogNextPage');
+      if (btnNext) btnNext.disabled = !mangaRes.hasMore;
 
-      $('#catalogCount').textContent = `${mangaRes.total ? mangaRes.total.toLocaleString('fr-FR') : mangaItems.length} mangas trouvés`;
+      $('#catalogCount').textContent = `${mangaRes.total ? mangaRes.total.toLocaleString('fr-FR') : mangaItems.length} œuvres trouvées`;
 
       if (reset) {
+        state.catalog.items = mangaItems;
         $('#catalogGrid').innerHTML = mangaItems.map(cardHTML).join('');
       } else {
+        state.catalog.items = [...state.catalog.items, ...mangaItems];
         const div = document.createElement('div');
         div.innerHTML = mangaItems.map(cardHTML).join('');
         while (div.firstChild) $('#catalogGrid').appendChild(div.firstChild);
@@ -603,57 +760,50 @@ async function fetchCatalog(reset = false) {
     return;
   }
 
-  // --- BRANCHE ANIME : AniList GraphQL Intacte ---
+  // Branche AniList Anime
+  try {
+    const vars = {
+      page: state.catalog.page,
+      perPage: 24,
+      type: 'ANIME',
+      sort: [state.catalog.sort]
+    };
 
-  if (reset) {
-    state.catalog.page = 1;
-    state.catalog.items = [];
-    $('#catalogGrid').innerHTML = '';
-    $('#catalogEmpty').hidden = true;
-  }
+    if (state.catalog.query) vars.search = state.catalog.query;
+    if (fmt === 'MOVIE') vars.format = 'MOVIE';
+    else if (fmt === 'ANIME') vars.format = 'TV';
 
-  $('#catalogLoading').hidden = false;
-  $('#catalogMoreWrap').hidden = true;
+    if (state.catalog.status === 'RELEASING') vars.status = 'RELEASING';
+    else if (state.catalog.status === 'FINISHED') vars.status = 'FINISHED';
 
-  const type = state.catalog.format === 'MANGA' ? 'MANGA' : 'ANIME';
-  let formatParam = undefined;
-  if (state.catalog.format === 'TV') formatParam = 'TV';
-  if (state.catalog.format === 'MOVIE') formatParam = 'MOVIE';
+    if (state.catalog.genre) vars.genre = state.catalog.genre;
 
-  const vars = {
-    page: state.catalog.page,
-    perPage: 24,
-    type: type,
-    sort: [state.catalog.sort]
-  };
-
-  if (state.catalog.query) vars.search = state.catalog.query;
-  if (formatParam) vars.format = formatParam;
-  if (state.catalog.genre) vars.genre = state.catalog.genre;
-
-  const query = `
-    query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $search: String, $format: MediaFormat, $genre: String) {
-      Page(page: $page, perPage: $perPage) {
-        pageInfo { hasNextPage total }
-        media(type: $type, sort: $sort, search: $search, format: $format, genre: $genre, isAdult: false) {
-          ${CARD_FIELDS}
+    const query = `
+      query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $search: String, $format: MediaFormat, $status: MediaStatus, $genre: String) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo { hasNextPage total }
+          media(type: $type, sort: $sort, search: $search, format: $format, status: $status, genre: $genre, isAdult: false) {
+            ${CARD_FIELDS}
+          }
         }
       }
-    }
-  `;
+    `;
 
-  try {
     const data = await anilist(query, vars);
-    const { media, pageInfo } = data.Page;
+    const media = data?.Page?.media || [];
+    const pageInfo = data?.Page?.pageInfo || {};
 
-    state.catalog.hasNextPage = pageInfo.hasNextPage;
-    state.catalog.items = reset ? media : [...state.catalog.items, ...media];
+    state.catalog.hasNextPage = pageInfo.hasNextPage || false;
+    const btnNext = $('#btnCatalogNextPage');
+    if (btnNext) btnNext.disabled = !pageInfo.hasNextPage;
 
-    $('#catalogCount').textContent = `${pageInfo.total ? pageInfo.total.toLocaleString('fr-FR') : media.length} résultats`;
+    $('#catalogCount').textContent = `${pageInfo.total ? pageInfo.total.toLocaleString('fr-FR') : media.length} titres trouvés`;
 
     if (reset) {
+      state.catalog.items = media;
       $('#catalogGrid').innerHTML = media.map(cardHTML).join('');
     } else {
+      state.catalog.items = [...state.catalog.items, ...media];
       const div = document.createElement('div');
       div.innerHTML = media.map(cardHTML).join('');
       while (div.firstChild) $('#catalogGrid').appendChild(div.firstChild);
@@ -667,16 +817,18 @@ async function fetchCatalog(reset = false) {
       $('#catalogMoreWrap').hidden = false;
     }
   } catch (err) {
+    console.error('[Catalogue Anime] Erreur:', err);
     if (reset) {
       $('#catalogGrid').innerHTML = '';
       $('#catalogEmpty').hidden = false;
-      $('#catalogEmpty').querySelector('p').textContent = err.message;
+      $('#catalogEmpty').querySelector('p').textContent = 'Erreur lors du chargement: ' + err.message;
     }
   } finally {
     state.catalog.loading = false;
     $('#catalogLoading').hidden = true;
   }
 }
+
 
 /* ==========================================================
    4. PLANNING DE DIFFUSION (Airing Schedule)
@@ -1814,7 +1966,8 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
           if (rect.bottom >= containerTop + 100) {
             const pageNum = parseInt(img.dataset.page, 10) || 1;
             $('#readerPageCounter').textContent = `Page ${pageNum} / ${pagesData.total}`;
-            saveMangaProgress(mangaId, {
+            addKovaXp(50);
+    saveMangaProgress(mangaId, {
               chapterId,
               chapterNumber: currentChapter?.chapter || '1',
               page: pageNum,
@@ -1827,6 +1980,7 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
     };
 
     // Sauvegarde initiale du chapitre démarré
+    addKovaXp(50);
     saveMangaProgress(mangaId, {
       chapterId,
       chapterNumber: currentChapter?.chapter || '1',
@@ -1852,6 +2006,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.visibilityState === 'hidden') saveCurrentReaderProgress();
   });
   window.addEventListener('pagehide', () => saveCurrentReaderProgress());
+
+  // Bouton Mode Plein Écran
+  $('#btnToggleFullscreen')?.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn('Erreur plein écran:', err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  });
+
 
   $('#btnToggleDataSaver')?.addEventListener('click', () => {
     currentMangaState.dataSaver = !currentMangaState.dataSaver;
@@ -2010,4 +2178,102 @@ window.addEventListener('keydown', (e) => {
       }
       break;
   }
+});
+
+
+/* ==========================================================
+   ESPACE PROFIL KOVA — NIVEAU, XP, BADGES & AVATARS
+   ========================================================== */
+const KOVA_XP_KEY = 'kova_user_xp';
+const KOVA_AVATAR_KEY = 'kova_user_avatar';
+
+const KOVA_AVATARS = [
+  'kova-mascot.png',
+  'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1563089145-599997674d42?w=150&auto=format&fit=crop&q=80'
+];
+
+function getUserXp() {
+  return parseInt(localStorage.getItem(KOVA_XP_KEY) || '0', 10);
+}
+
+function addKovaXp(amount = 50) {
+  const current = getUserXp();
+  const next = current + amount;
+  localStorage.setItem(KOVA_XP_KEY, String(next));
+  updateProfileKovaUI();
+}
+
+function calculateKovaLevel(xp) {
+  // 100 XP par niveau : niveau 1 = 0-99, niveau 2 = 100-199...
+  const level = Math.floor(xp / 100) + 1;
+  const currentLevelXp = xp % 100;
+  return { level, currentLevelXp, nextLevelXp: 100, percent: currentLevelXp };
+}
+
+function updateProfileKovaUI() {
+  const xp = getUserXp();
+  const { level, currentLevelXp, percent } = calculateKovaLevel(xp);
+
+  const levelEl = $('#userLevelNum');
+  if (levelEl) levelEl.textContent = level;
+
+  const curEl = $('#userXpCurrent');
+  if (curEl) curEl.textContent = currentLevelXp;
+
+  const barEl = $('#userXpBarFill');
+  if (barEl) barEl.style.width = `${percent}%`;
+
+  // Badges update
+  if (xp >= 100) $('#badgeReader')?.classList.add('unlocked');
+  if (level >= 5) $('#badgeOtaku')?.classList.add('unlocked');
+
+  const favCount = (state.library?.favorites || []).length;
+  if (favCount >= 5) $('#badgeCollector')?.classList.add('unlocked');
+
+  // Avatar
+  const savedAvatar = localStorage.getItem(KOVA_AVATAR_KEY);
+  if (savedAvatar) {
+    const profImg = $('#profileAvatarBig');
+    if (profImg) profImg.src = savedAvatar;
+    const navImg = $('#navAvatar');
+    if (navImg) navImg.src = savedAvatar;
+    const sideImg = $('#sideAvatar');
+    if (sideImg) sideImg.src = savedAvatar;
+  }
+}
+
+// Initialisation des modales de profil et avatars
+document.addEventListener('DOMContentLoaded', () => {
+  updateProfileKovaUI();
+
+  $('#btnChangeAvatar')?.addEventListener('click', () => {
+    const modal = $('#avatarPickerModal');
+    const grid = $('#avatarChoicesGrid');
+    if (!modal || !grid) return;
+
+    grid.innerHTML = KOVA_AVATARS.map((url, i) => `
+      <div class="avatar-choice-item" data-url="${url}">
+        <img src="${url}" alt="Avatar ${i+1}">
+      </div>
+    `).join('');
+
+    grid.querySelectorAll('.avatar-choice-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const u = item.dataset.url;
+        localStorage.setItem(KOVA_AVATAR_KEY, u);
+        updateProfileKovaUI();
+        modal.hidden = true;
+        toast('Avatar KOVA mis à jour !');
+      });
+    });
+
+    modal.hidden = false;
+  });
+
+  $('#btnCloseAvatarPicker')?.addEventListener('click', () => {
+    const modal = $('#avatarPickerModal');
+    if (modal) modal.hidden = true;
+  });
 });
