@@ -1495,3 +1495,148 @@ body {
   height: 100%;
   object-fit: cover;
 }
+
+/* ==========================================================
+   SPLASH FIX & RECOMMENDED / ACCESSIBILITY STYLES
+   ========================================================== */
+#splash.hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+/* Grille de Recommandations Manga */
+.recs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 8px 16px;
+}
+
+.rec-card {
+  display: flex;
+  gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  position: relative;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.rec-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.rec-poster {
+  width: 70px;
+  height: 100px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+}
+
+.rec-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rec-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.rec-genres {
+  font-size: 11px;
+  color: var(--accent-light);
+  margin-bottom: 8px;
+}
+
+.rec-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.btn-rec-action {
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-rec-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.btn-rec-action.primary {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+/* Contrôles d'accessibilité du lecteur */
+.reader-select-compact {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+.reader-select-compact:focus {
+  border-color: var(--accent);
+}
+
+/* Filtres de contraste du lecteur */
+.contrast-high-contrast .reader-page-img {
+  filter: contrast(135%) brightness(105%);
+}
+
+.contrast-sepia .reader-page-img {
+  filter: sepia(35%) contrast(105%) brightness(95%);
+}
+
+.contrast-night .reader-page-img {
+  filter: brightness(80%) contrast(110%);
+  background: #111;
+}
+
+/* Tailles d'affichage des planches */
+.size-fit .reader-page-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.size-medium .reader-page-wrap {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.size-large .reader-page-wrap {
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+}

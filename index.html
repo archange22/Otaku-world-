@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#07080f">
-<title>KOVA — Anime • Manga • Stories</title>
+<title>KOVA — Manga, Webtoon & Stories</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://graphql.anilist.co">
 <link rel="stylesheet" href="style.css">
@@ -47,7 +47,7 @@
 
   <div class="top-search-bar" id="topSearchBar">
     <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    <input type="search" id="quickSearchInput" placeholder="Rechercher un anime, un manga..." autocomplete="off">
+    <input type="search" id="quickSearchInput" placeholder="Rechercher un manga, webtoon, manhwa..." autocomplete="off">
   </div>
 
   <div class="top-actions">
@@ -84,7 +84,7 @@
       <a href="#/profile" class="drawer-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Mon profil & réglages</span></a>
     </nav>
     <div class="drawer-footer">
-      <div class="drawer-badge">KOVA • Anime • Manga • Stories</div>
+      <div class="drawer-badge">KOVA • Manga, Webtoon & Stories</div>
     </div>
   </aside>
 </div>
@@ -138,7 +138,7 @@
     <div class="kova-mascot-banner">
       <div class="kova-banner-content">
         <div class="kova-badge-pill">✨ NOUVELLE EXPÉRIENCE KOVA</div>
-        <h1 class="kova-banner-title">Votre univers <span class="text-gradient">Anime & Manga</span> illimité</h1>
+        <h1 class="kova-banner-title">Votre univers <span class="text-gradient">Manga & Webtoon</span> illimité</h1>
         <p class="kova-banner-desc">Explorez des milliers d'œuvres, suivez vos sorties simulcast en direct et plongez dans vos chapitres préférés avec fluidité.</p>
         <div class="kova-banner-actions">
           <a href="#/catalogue" class="btn-primary">Explorer le catalogue</a>
@@ -170,7 +170,16 @@
       <div class="resume-grid" id="homeResumeGrid"></div>
     </div>
 
-    <!-- Feed Carousels (Anime populaires, Manga populaires, Nouveaux chapitres, Planning) -->
+    <!-- Section Recommandations personnalisées avec actions masquer / déjà lu -->
+    <div class="section-block" id="homeRecommendationsSection" hidden>
+      <div class="section-header">
+        <h2 class="section-title">💡 Recommandé pour vous</h2>
+        <span class="section-badge">Basé sur vos lectures</span>
+      </div>
+      <div class="recs-grid" id="homeRecommendationsGrid"></div>
+    </div>
+
+    <!-- Feed Carousels 100% Manga -->
     <div class="feed-container" id="feedContainer"></div>
   </section>
 
@@ -178,7 +187,7 @@
   <section id="viewCatalogue" class="view-page" hidden>
     <div class="catalog-header">
       <div class="catalog-title-row">
-        <h1 class="page-title">Catalogue Anime & Manga</h1>
+        <h1 class="page-title">Catalogue Manga & Webtoon</h1>
         <span class="catalog-count" id="catalogCount">Recherche en temps réel</span>
       </div>
 
@@ -195,12 +204,10 @@
         <div class="filter-group">
           <span class="filter-label">Type</span>
           <div class="chip-row" id="filterFormat">
-            <button class="chip active" data-val="ALL">Tous</button>
-            <button class="chip" data-val="ANIME">Anime (Séries)</button>
-            <button class="chip" data-val="MOVIE">Films</button>
-            <button class="chip" data-val="MANGA">Manga</button>
-            <button class="chip" data-val="MANHWA">Manhwa</button>
-            <button class="chip" data-val="MANHUA">Manhua</button>
+            <button class="chip active" data-val="ALL">Tous les types</button>
+            <button class="chip" data-val="MANGA">🇯🇵 Manga</button>
+            <button class="chip" data-val="MANHWA">🇰🇷 Manhwa</button>
+            <button class="chip" data-val="MANHUA">🇨🇳 Manhua</button>
           </div>
         </div>
 
@@ -269,8 +276,8 @@
   <!-- Page 3 : Planning des sorties -->
   <section id="viewPlanning" class="view-page" hidden>
     <div class="planning-header">
-      <h1 class="page-title">Planning de diffusion (Simulcast)</h1>
-      <p class="page-sub">Sorties d'épisodes en direct du Japon et simulcast officiel</p>
+      <h1 class="page-title">Planning des parutions Manga & Webtoon</h1>
+      <p class="page-sub">Calendrier des sorties de chapitres de la semaine</p>
       
       <div class="planning-filters-row">
         <div class="filter-group">
@@ -359,7 +366,7 @@
         <div class="kova-xp-bar-bg">
           <div class="kova-xp-bar-fill" id="userXpBarFill" style="width: 0%;"></div>
         </div>
-        <p class="kova-xp-hint">💡 Gagnez de l'XP en lisant des chapitres (+50 XP) et en consultant des fiches anime (+20 XP) !</p>
+        <p class="kova-xp-hint">💡 Gagnez de l'XP en lisant des chapitres (+50 XP) et en découvrant de nouvelles séries (+20 XP) !</p>
       </div>
 
       <!-- Galerie des Badges KOVA -->
@@ -403,6 +410,24 @@
 
     <div class="settings-grid">
       <div class="settings-box">
+        <h3>🔔 Notifications & Alertes Chapitres</h3>
+        <label class="setting-row">
+          <div>
+            <strong>Alertes nouveaux chapitres</strong>
+            <p style="font-size:12px;color:var(--text-muted)">Recevoir une alerte quand un nouveau chapitre de vos mangas favoris sort.</p>
+          </div>
+          <input type="checkbox" id="chkChapterAlerts" checked>
+        </label>
+        <label class="setting-row">
+          <div>
+            <strong>Bandeau d'alerte visuelle in-app</strong>
+            <p style="font-size:12px;color:var(--text-muted)">Affiche un bandeau dès l'arrivée d'une nouvelle parution.</p>
+          </div>
+          <input type="checkbox" id="chkInAppAlerts" checked>
+        </label>
+      </div>
+
+      <div class="settings-box">
         <h3>📖 Paramètres de lecture</h3>
         <label class="setting-row">
           <div>
@@ -418,18 +443,12 @@
           </div>
           <input type="checkbox" id="chkWebtoonMode" checked>
         </label>
-        <label class="setting-row">
-          <div>
-            <strong>Autoplay des bandes-annonces</strong>
-            <p style="font-size:12px;color:var(--text-muted)">Lance automatiquement les trailers vidéo YouTube sur les fiches.</p>
-          </div>
-          <input type="checkbox" id="chkAutoplayTrailer" checked>
-        </label>
+
       </div>
 
       <div class="settings-box">
         <h3>🛡️ À propos de KOVA</h3>
-        <p class="settings-text">KOVA — Plateforme moderne Anime • Manga • Stories propulsée par AniList GraphQL, MangaDex API et Firebase.</p>
+        <p class="settings-text">KOVA — Plateforme moderne Anime • Manga • Stories propulsée par l'API MangaDex et Firebase.</p>
         <div class="settings-links">
           <a href="https://github.com/archange22/Otaku-world-" target="_blank" rel="noopener">Dépôt GitHub</a>
           <a href="https://site-otaku-f9a94.web.app" target="_blank" rel="noopener">Lien direct Firebase</a>
@@ -463,13 +482,25 @@
         </div>
       </div>
       <div class="reader-header-right">
-        <button type="button" class="chip chip-reader" id="btnToggleDataSaver" title="Activer/Désactiver le mode économie de données">
+        <!-- Contrôles d'accessibilité -->
+        <select id="readerContrastSelect" class="reader-select-compact" aria-label="Filtre de contraste et confort de lecture" title="Mode de contraste">
+          <option value="normal">🎨 Contraste normal</option>
+          <option value="high-contrast">⚡ Contraste élevé</option>
+          <option value="sepia">📜 Sépia doux</option>
+          <option value="night">🌙 Nuit atténuée</option>
+        </select>
+        <select id="readerSizeSelect" class="reader-select-compact" aria-label="Largeur d'affichage des planches" title="Taille des planches">
+          <option value="fit">📐 Pleine largeur (Fit)</option>
+          <option value="medium">📏 Normal (800px)</option>
+          <option value="large">🔍 Large (1000px)</option>
+        </select>
+        <button type="button" class="chip chip-reader" id="btnToggleDataSaver" title="Activer/Désactiver le mode économie de données" aria-label="Basculer économie de données">
           <span id="dataSaverIndicator">⚡ Haute Qualité</span>
         </button>
-        <button type="button" class="icon-btn" id="btnToggleFullscreen" aria-label="Mode plein écran" title="Plein écran">
+        <button type="button" class="icon-btn" id="btnToggleFullscreen" aria-label="Basculer mode plein écran" title="Plein écran">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
-        <div class="reader-page-counter" id="readerPageCounter">Page 1 / 1</div>
+        <div class="reader-page-counter" id="readerPageCounter" aria-live="polite">Page 1 / 1</div>
       </div>
     </header>
 
