@@ -1,3 +1,81 @@
+
+function setupCarouselAccessibility(scrollEl) {
+  if (!scrollEl || scrollEl.dataset.carouselInit) return;
+  scrollEl.dataset.carouselInit = 'true';
+
+  // Navigation fluide au clavier (Flèches gauche / droite)
+  scrollEl.addEventListener('keydown', (e) => {
+    const cardWidth = scrollEl.querySelector('.card')?.offsetWidth || 180;
+    const gap = 14;
+    const scrollAmount = cardWidth + gap;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      scrollEl.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      scrollEl.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    }
+  });
+
+  // Gestion des cartes au clavier (Entrée / Espace pour ouvrir)
+  scrollEl.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
+}
+
+// Initialisation globale des boutons précédent / suivant des carrousels
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.carousel-btn');
+  if (!btn) return;
+  const targetId = btn.dataset.target;
+  const scrollEl = document.getElementById(targetId);
+  if (!scrollEl) return;
+  const cardWidth = scrollEl.querySelector('.card')?.offsetWidth || 180;
+  const step = (cardWidth + 14) * 2;
+  const isNext = btn.classList.contains('next');
+  scrollEl.scrollBy({ left: isNext ? step : -step, behavior: 'smooth' });
+});
+
+
+// Placeholder SVG Otaku-World élégant et résilient
+function getPosterPlaceholderSvg(title = 'Otaku-World') {
+  const safeTitle = String(title).replace(/[&<>'"\/]/g, '');
+  return  + encodeURIComponent();
+}
+
+// Gestionnaire d'erreur d'affiche avec nouvelle tentative discrète puis fallback propre
+window.handleImageError = function(img, fallbackUrl, title) {
+  if (!img) return;
+  const attempts = parseInt(img.dataset.retryCount || '0', 10);
+  if (attempts === 0 && fallbackUrl && fallbackUrl !== img.src) {
+    img.dataset.retryCount = '1';
+    // Tentative discrète avec fallback de résolution
+    setTimeout(() => {
+      img.src = fallbackUrl;
+    }, 1200);
+  } else if (attempts === 1) {
+    img.dataset.retryCount = '2';
+    // Seconde tentative discrète avec cache-busting
+    setTimeout(() => {
+      const sep = img.src.includes('?') ? '&' : '?';
+      img.src = img.src + sep + 't=' + Date.now();
+    }, 1500);
+  } else {
+    // Remplacement silencieux et propre par le placeholder SVG
+    img.onerror = null;
+    img.removeAttribute('srcset');
+    img.removeAttribute('sizes');
+    img.src = getPosterPlaceholderSvg(title);
+    img.classList.add('poster-fallback');
+  }
+};
+
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { ref, get, set, remove, onValue } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
@@ -54,7 +132,7 @@ async function anilist(query, variables = {}) {
 }
 
 const CARD_FIELDS = `
-  id title { romaji english native } coverImage { extraLarge large color }
+  id title { romaji english native } coverImage { extraLarge large medium color }
   bannerImage averageScore format seasonYear status episodes chapters
 `;
 
@@ -63,14 +141,27 @@ function mediaType(m) {
 }
 
 function cardHTML(m) {
-  const title = m.title.romaji || m.title.english || m.title.native || 'Sans titre';
-  const img = m.coverImage?.large || m.coverImage?.extraLarge || '';
+  const title = (m.title.romaji || m.title.english || m.title.native || 'Sans titre').replace(/"/g, '&quot;');
+  const c = m.coverImage || {};
+  const imgMedium = c.medium || '';
+  const imgLarge = c.large || c.extraLarge || '';
+  const imgExtraLarge = c.extraLarge || c.large || '';
+  const fallbackUrl = imgLarge || imgMedium || '';
+  
+  // Variantes adaptatives srcset & sizes
+  const srcSetArr = [];
+  if (imgMedium) srcSetArr.push(`${imgMedium} 160w`);
+  if (imgLarge && imgLarge !== imgMedium) srcSetArr.push(`${imgLarge} 230w`);
+  if (imgExtraLarge && imgExtraLarge !== imgLarge) srcSetArr.push(`${imgExtraLarge} 460w`);
+  const srcSetAttr = srcSetArr.length > 1 ? `srcset="${srcSetArr.join(', ')}" sizes="(max-width: 640px) 130px, (max-width: 1024px) 170px, 200px"` : '';
+
   const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
   const sub = [m.format || 'ANIME', m.seasonYear].filter(Boolean).join(' • ');
+
   return `
-    <article class="card" data-id="${m.id}">
+    <article class="card" data-id="${m.id}" tabindex="0" role="button" aria-label="${title}, ${m.format || 'Anime'}, ${score ? 'note ' + score + ' sur 10' : ''}">
       <div class="card-poster">
-        <img loading="lazy" src="${img}" alt="${title}">
+        <img loading="lazy" decoding="async" src="${imgLarge || imgExtraLarge}" ${srcSetAttr} alt="Affiche de ${title}" onerror="handleImageError(this, '${fallbackUrl}', '${title.replace(/'/g, "\'")}')">
         ${score ? `<span class="card-score">★ ${score}</span>` : ''}
         <span class="card-format">${m.format || 'ANIME'}</span>
       </div>
@@ -155,12 +246,20 @@ function handleRoute() {
    ========================================================== */
 function feedRowHTML(title, id, filterVal) {
   return `
-    <section class="feed-row">
+    <section class="feed-row" role="region" aria-roledescription="carrousel" aria-label="${title}">
       <div class="feed-head">
         <h2 class="feed-title">${title}</h2>
-        <a href="#/catalogue" class="feed-see-all" data-quick-sort="${filterVal}">Tout voir &rarr;</a>
+        <div class="carousel-controls">
+          <button class="carousel-btn prev" type="button" aria-label="Faire défiler ${title} vers la gauche" data-target="${id}" tabindex="0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="carousel-btn next" type="button" aria-label="Faire défiler ${title} vers la droite" data-target="${id}" tabindex="0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <a href="#/catalogue" class="feed-see-all" data-quick-sort="${filterVal}">Tout voir &rarr;</a>
+        </div>
       </div>
-      <div class="feed-scroll" id="${id}"></div>
+      <div class="feed-scroll" id="${id}" role="group" aria-live="polite" tabindex="0" aria-label="Liste des éléments du carrousel ${title}"></div>
     </section>`;
 }
 
@@ -198,6 +297,7 @@ function fillFeedRow(rowId, list) {
   if (!el) return;
   el.innerHTML = list.map(cardHTML).join('');
   bindCards(el, list);
+  setupCarouselAccessibility(el);
 }
 
 function setupHeroSlider(items) {
@@ -231,7 +331,27 @@ function startHeroTimer() {
 function renderHeroItem(m) {
   if (!m) return;
   const backdrop = $('#heroBackdrop');
-  backdrop.style.backgroundImage = `url(${m.bannerImage || m.coverImage?.extraLarge || ''})`;
+  const bannerUrl = m.bannerImage || '';
+  const posterUrl = m.coverImage?.extraLarge || m.coverImage?.large || '';
+  const heroImageSrc = bannerUrl || posterUrl;
+  
+  if (heroImageSrc) {
+    const testImg = new Image();
+    testImg.src = heroImageSrc;
+    testImg.onload = () => {
+      backdrop.style.backgroundImage = `url(${heroImageSrc})`;
+      backdrop.classList.add('hero-loaded');
+    };
+    testImg.onerror = () => {
+      if (bannerUrl && posterUrl && bannerUrl !== posterUrl) {
+        backdrop.style.backgroundImage = `url(${posterUrl})`;
+      } else {
+        backdrop.style.backgroundImage = 'radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.35) 0%, rgba(15, 12, 29, 0.95) 75%)';
+      }
+    };
+  } else {
+    backdrop.style.backgroundImage = 'radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.35) 0%, rgba(15, 12, 29, 0.95) 75%)';
+  }
 
   const title = m.title.romaji || m.title.english || 'Titre';
   const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
@@ -518,7 +638,7 @@ async function loadDetail(id) {
     query ($id: Int) {
       Media(id: $id) {
         id title { romaji english native }
-        coverImage { extraLarge large color }
+        coverImage { extraLarge large medium color }
         bannerImage averageScore format seasonYear status
         description(asHtml: false) episodes chapters duration
         genres studios(isMain: true) { nodes { name } }
