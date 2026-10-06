@@ -172,12 +172,23 @@ function cardHTML(m) {
 }
 
 function bindCards(container, list) {
-  container.querySelectorAll('.card').forEach(el => {
-    el.addEventListener('click', () => {
-      window.location.hash = `#/anime/${el.dataset.id}`;
+  if (!container) return;
+  container.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const item = list.find(x => String(x.id) === String(id));
+      if (item && item.isMangaDex) {
+        window.openMangaDetail(id);
+      } else if (id && id.length > 20) {
+        // UUID MangaDex
+        window.openMangaDetail(id);
+      } else {
+        openDetail(id);
+      }
     });
   });
 }
+
 
 /* ==========================================================
    1. SOCLE TECHNIQUE & ROUTAGE (Hash Router)
@@ -266,32 +277,81 @@ function feedRowHTML(title, id, filterVal) {
 
 async function loadHome() {
   const container = $('#feedContainer');
-  container.innerHTML = 
-    feedRowHTML('🔥 En cours de diffusion (Simulcast)', 'rowAiring', 'TRENDING_DESC') +
-    feedRowHTML('⭐ Les plus populaires de tous les temps', 'rowPopular', 'POPULARITY_DESC') +
-    feedRowHTML('🏆 Les chefs-d\u2019œuvre les mieux notés', 'rowTopRated', 'SCORE_DESC') +
-    feedRowHTML('📖 Mangas & Webtoons à l\u2019honneur', 'rowManga', 'POPULARITY_DESC');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">🔥 Tendances Manga & Webtoon</h2>
+      </div>
+      <div class="carousel" id="carouselTrendingManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">⭐ Les Mieux Notés</h2>
+      </div>
+      <div class="carousel" id="carouselTopManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="section-block">
+      <div class="section-header">
+        <h2 class="section-title">⚡ Derniers Ajouts & Chapitres</h2>
+      </div>
+      <div class="carousel" id="carouselLatestManga"><div class="catalog-loading"><div class="spinner"></div></div></div>
+    </div>
+  `;
 
   try {
-    const [airing, popular, topRated, manga] = await Promise.all([
-      anilist(`query { Page(perPage: 16) { media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} description } } }`),
-      anilist(`query { Page(perPage: 16) { media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
-      anilist(`query { Page(perPage: 16) { media(type: ANIME, sort: SCORE_DESC, isAdult: false) { ${CARD_FIELDS} } } }`),
-      anilist(`query { Page(perPage: 16) { media(type: MANGA, sort: POPULARITY_DESC, isAdult: false) { ${CARD_FIELDS} } } }`)
-    ]);
+    // 1. Tendances
+    const trendingRes = await mangadexAdapter.getCatalogue({ sort: 'followedCount', limit: 12 });
+    const trendingItems = trendingRes.items.map(m => ({
+      id: m.id,
+      format: m.type.toUpperCase(),
+      title: { romaji: m.title.display },
+      coverImage: { large: m.coverUrl },
+      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
+      seasonYear: m.year,
+      isMangaDex: true
+    }));
+    $('#carouselTrendingManga').innerHTML = trendingItems.map(cardHTML).join('');
+    bindCards($('#carouselTrendingManga'), trendingItems);
 
-    const heroList = airing.Page.media.slice(0, 5);
-    state.homeHeroItems = heroList;
-    setupHeroSlider(heroList);
+    // Initialiser le Hero avec les 5 premiers mangas tendances
+    state.heroMedia = trendingItems.slice(0, 5);
+    renderHero();
 
-    fillFeedRow('rowAiring', airing.Page.media);
-    fillFeedRow('rowPopular', popular.Page.media);
-    fillFeedRow('rowTopRated', topRated.Page.media);
-    fillFeedRow('rowManga', manga.Page.media);
+    // 2. Mieux notés
+    const topRes = await mangadexAdapter.getCatalogue({ sort: 'rating', limit: 12 });
+    const topItems = topRes.items.map(m => ({
+      id: m.id,
+      format: m.type.toUpperCase(),
+      title: { romaji: m.title.display },
+      coverImage: { large: m.coverUrl },
+      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
+      seasonYear: m.year,
+      isMangaDex: true
+    }));
+    $('#carouselTopManga').innerHTML = topItems.map(cardHTML).join('');
+    bindCards($('#carouselTopManga'), topItems);
+
+    // 3. Derniers ajouts
+    const latestRes = await mangadexAdapter.getCatalogue({ sort: 'latest', limit: 12 });
+    const latestItems = latestRes.items.map(m => ({
+      id: m.id,
+      format: m.type.toUpperCase(),
+      title: { romaji: m.title.display },
+      coverImage: { large: m.coverUrl },
+      averageScore: m.score.value ? Math.round(m.score.value * 10) : null,
+      seasonYear: m.year,
+      isMangaDex: true
+    }));
+    $('#carouselLatestManga').innerHTML = latestItems.map(cardHTML).join('');
+    bindCards($('#carouselLatestManga'), latestItems);
+
   } catch (err) {
-    container.innerHTML = `<div class="catalog-empty"><div class="empty-icon">⚠️</div><h3>Impossible de charger l\u2019accueil</h3><p>${err.message}</p></div>`;
+    console.error('Erreur chargement accueil manga:', err);
   }
 }
+
 
 function fillFeedRow(rowId, list) {
   const el = document.getElementById(rowId);
@@ -1466,3 +1526,292 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
 }
+
+
+
+/* ==========================================================
+   LECTEUR MANGA / WEBTOON & FICHE MANGA
+   ========================================================== */
+let currentMangaState = {
+  manga: null,
+  chapters: [],
+  currentChapterIndex: -1,
+  currentPage: 1,
+  totalPages: 1,
+  dataSaver: false
+};
+
+const MANGA_PROGRESS_KEY = 'otaku_manga_progress';
+
+function getMangaProgress(mangaId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(MANGA_PROGRESS_KEY) || '{}');
+    return all[mangaId] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveMangaProgress(mangaId, data) {
+  try {
+    const all = JSON.parse(localStorage.getItem(MANGA_PROGRESS_KEY) || '{}');
+    all[mangaId] = {
+      ...data,
+      updatedAt: Date.now()
+    };
+    localStorage.setItem(MANGA_PROGRESS_KEY, JSON.stringify(all));
+
+    // Synchronisation Firebase si connecté
+    if (window.currentUser && window.db) {
+      try {
+        const progRef = window.db.ref(`progress/${window.currentUser.uid}/${mangaId}`);
+        progRef.update({
+          mediaType: 'manga',
+          chapterId: data.chapterId,
+          chapterNumber: data.chapterNumber,
+          page: data.page,
+          mangaTitle: data.mangaTitle,
+          updatedAt: Date.now()
+        });
+      } catch (err) {
+        console.warn('Erreur sync Firebase progress:', err);
+      }
+    }
+  } catch (e) {
+    console.error('Erreur saveMangaProgress:', e);
+  }
+}
+
+window.openMangaDetail = async function(mangaId) {
+  const detailView = $('#viewDetail');
+  if (!detailView) return;
+  window.location.hash = `#/manga/${mangaId}`;
+  
+  detailView.innerHTML = '<div class="catalog-loading"><div class="spinner"></div><p style="color:#aaa;margin-top:10px;">Chargement de la fiche manga...</p></div>';
+  detailView.hidden = false;
+  $$('.view-page').forEach(v => { if (v.id !== 'viewDetail') v.hidden = true; });
+
+  try {
+    const manga = await mangadexAdapter.getMangaDetails(mangaId);
+    const feed = await mangadexAdapter.getFeed(mangaId, { limit: 100 });
+    currentMangaState.manga = manga;
+    currentMangaState.chapters = feed.chapters || [];
+
+    const progress = getMangaProgress(mangaId);
+    const genresHtml = (manga.genres || []).map(g => `<span class="detail-tag">${g.name}</span>`).join('');
+    
+    let resumeBtnHtml = '';
+    if (progress && progress.chapterId) {
+      resumeBtnHtml = `<button type="button" class="btn-primary" id="btnResumeManga" style="background:#7c3aed;margin-right:10px;">▶ Reprendre Ch. ${progress.chapterNumber || ''} (p. ${progress.page || 1})</button>`;
+    }
+    const firstChapterId = currentMangaState.chapters[currentMangaState.chapters.length - 1]?.id || currentMangaState.chapters[0]?.id;
+
+    const chaptersHtml = currentMangaState.chapters.map((ch, idx) => {
+      const isRead = progress && progress.chapterId === ch.id;
+      return `
+        <div class="manga-ch-item ${isRead ? 'read' : ''}" data-idx="${idx}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <div>
+            <strong style="color:#fff;font-size:0.95rem;">${ch.title || 'Chapitre ' + ch.chapter}</strong>
+            <span style="display:block;font-size:0.75rem;color:#888;">Langue: ${ch.language.toUpperCase()} ${ch.isFallbackLanguage ? '(Repli EN)' : ''}</span>
+          </div>
+          <button type="button" class="btn-primary btn-sm" style="padding:6px 12px;font-size:0.8rem;">${isRead ? 'Reprendre' : 'Lire'}</button>
+        </div>
+      `;
+    }).join('') || '<p style="color:#888;">Aucun chapitre disponible pour le moment.</p>';
+
+    detailView.innerHTML = `
+      <div class="detail-container">
+        <button type="button" class="btn-back" onclick="window.history.back()" style="margin-bottom:16px;">← Retour</button>
+        <div class="detail-hero" style="display:flex;gap:24px;flex-wrap:wrap;">
+          <img src="${manga.coverUrl}" alt="${manga.title.display}" style="width:200px;border-radius:12px;object-fit:cover;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+          <div style="flex:1;min-width:260px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span class="card-format" style="position:static;padding:4px 8px;">${manga.type.toUpperCase()}</span>
+              ${manga.score.value ? `<span class="card-score" style="position:static;">★ ${manga.score.value}</span>` : ''}
+              <span style="color:#888;font-size:0.85rem;">Statut: ${manga.status}</span>
+            </div>
+            <h1 style="color:#fff;font-size:1.8rem;margin-bottom:12px;">${manga.title.display}</h1>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">${genresHtml}</div>
+            <div style="margin-bottom:20px;">
+              ${resumeBtnHtml}
+              ${firstChapterId ? `<button type="button" class="btn-primary" id="btnStartManga">📖 Commencer à lire</button>` : ''}
+            </div>
+            <p style="color:#ccc;line-height:1.6;font-size:0.95rem;">${manga.synopsis.text}</p>
+          </div>
+        </div>
+
+        <div style="margin-top:36px;">
+          <h2 style="color:#fff;font-size:1.3rem;margin-bottom:16px;">Chapitres disponibles (${currentMangaState.chapters.length})</h2>
+          <div class="manga-chapters-list" id="mangaChaptersList">${chaptersHtml}</div>
+        </div>
+      </div>
+    `;
+
+    // Bindings fiche
+    $('#btnResumeManga')?.addEventListener('click', () => {
+      if (progress && progress.chapterId) {
+        openMangaReader(manga.id, progress.chapterId, progress.page || 1);
+      }
+    });
+
+    $('#btnStartManga')?.addEventListener('click', () => {
+      if (firstChapterId) {
+        openMangaReader(manga.id, firstChapterId, 1);
+      }
+    });
+
+    $$('#mangaChaptersList .manga-ch-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.idx, 10);
+        const ch = currentMangaState.chapters[idx];
+        if (ch) openMangaReader(manga.id, ch.id, 1);
+      });
+    });
+
+  } catch (err) {
+    detailView.innerHTML = `<div class="catalog-loading"><p style="color:#ff6b6b;">Erreur: ${err.message}</p><button class="btn-primary" onclick="window.history.back()" style="margin-top:14px;">Retour</button></div>`;
+  }
+};
+
+window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
+  const readerView = $('#viewMangaReader');
+  if (!readerView) return;
+
+  readerView.hidden = false;
+  $('#readerLoading').hidden = false;
+  $('#readerPagesVertical').innerHTML = '';
+
+  const manga = currentMangaState.manga;
+  $('#readerMangaTitle').textContent = manga ? manga.title.display : 'Manga';
+
+  const chIndex = currentMangaState.chapters.findIndex(c => c.id === chapterId);
+  currentMangaState.currentChapterIndex = chIndex;
+  const currentChapter = chIndex >= 0 ? currentMangaState.chapters[chIndex] : null;
+
+  $('#readerChapterTitle').textContent = currentChapter ? (currentChapter.title || `Chapitre ${currentChapter.chapter}`) : 'Chapitre';
+
+  // Remplir sélecteur de chapitres
+  const sel = $('#readerChapterSelect');
+  if (sel) {
+    sel.innerHTML = currentMangaState.chapters.map((c, i) => `
+      <option value="${c.id}" ${c.id === chapterId ? 'selected' : ''}>
+        ${c.title || 'Chapitre ' + c.chapter} (${c.language.toUpperCase()})
+      </option>
+    `).join('');
+  }
+
+  // Désactiver boutons précédents/suivants selon index
+  const btnPrev = $('#btnPrevChapter');
+  const btnNext = $('#btnNextChapter');
+  if (btnPrev) btnPrev.disabled = chIndex >= currentMangaState.chapters.length - 1;
+  if (btnNext) btnNext.disabled = chIndex <= 0;
+
+  try {
+    const pagesData = await mangadexAdapter.getChapterPages(chapterId, { dataSaver: currentMangaState.dataSaver });
+    $('#readerLoading').hidden = true;
+    currentMangaState.totalPages = pagesData.total;
+    $('#readerPageCounter').textContent = `Page ${initialPage} / ${pagesData.total}`;
+
+    // Rendu en défilement vertical (Webtoon)
+    const pagesFrag = document.createDocumentFragment();
+    pagesData.pages.forEach((p, idx) => {
+      const img = document.createElement('img');
+      img.className = 'reader-page-img';
+      img.loading = idx < 3 ? 'eager' : 'lazy';
+      img.dataset.page = idx + 1;
+      img.src = p.url;
+      img.alt = `Page ${idx + 1}`;
+      pagesFrag.appendChild(img);
+    });
+    $('#readerPagesVertical').appendChild(pagesFrag);
+
+    // Défilement automatique vers la page de reprise
+    if (initialPage > 1) {
+      setTimeout(() => {
+        const targetImg = $(`#readerPagesVertical img[data-page="${initialPage}"]`);
+        if (targetImg) targetImg.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+
+    // Suivi de progression automatique lors du défilement
+    const container = $('#readerContainer');
+    let scrollTimeout = null;
+    container.onscroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const imgs = $$('#readerPagesVertical img');
+        const containerTop = container.getBoundingClientRect().top;
+        for (const img of imgs) {
+          const rect = img.getBoundingClientRect();
+          if (rect.bottom >= containerTop + 100) {
+            const pageNum = parseInt(img.dataset.page, 10) || 1;
+            $('#readerPageCounter').textContent = `Page ${pageNum} / ${pagesData.total}`;
+            saveMangaProgress(mangaId, {
+              chapterId,
+              chapterNumber: currentChapter?.chapter || '1',
+              page: pageNum,
+              mangaTitle: manga?.title?.display || 'Manga'
+            });
+            break;
+          }
+        }
+      }, 100);
+    };
+
+    // Sauvegarde initiale du chapitre démarré
+    saveMangaProgress(mangaId, {
+      chapterId,
+      chapterNumber: currentChapter?.chapter || '1',
+      page: initialPage,
+      mangaTitle: manga?.title?.display || 'Manga'
+    });
+
+  } catch (err) {
+    $('#readerLoading').innerHTML = `<p style="color:#ff6b6b;">Impossible de charger les pages de ce chapitre: ${err.message}</p>`;
+  }
+};
+
+// Initialisation des contrôles du lecteur manga
+document.addEventListener('DOMContentLoaded', () => {
+  $('#btnCloseReader')?.addEventListener('click', () => {
+    const readerView = $('#viewMangaReader');
+    if (readerView) readerView.hidden = true;
+  });
+
+  $('#btnToggleDataSaver')?.addEventListener('click', () => {
+    currentMangaState.dataSaver = !currentMangaState.dataSaver;
+    const ind = $('#dataSaverIndicator');
+    const chip = $('#btnToggleDataSaver');
+    if (currentMangaState.dataSaver) {
+      chip.classList.add('active-saver');
+      if (ind) ind.textContent = '📉 Mode Éco Actif';
+    } else {
+      chip.classList.remove('active-saver');
+      if (ind) ind.textContent = '⚡ Haute Qualité';
+    }
+    // Recharger le chapitre actuel avec le nouveau réglage
+    const ch = currentMangaState.chapters[currentMangaState.currentChapterIndex];
+    if (ch && currentMangaState.manga) {
+      openMangaReader(currentMangaState.manga.id, ch.id, 1);
+    }
+  });
+
+  $('#btnPrevChapter')?.addEventListener('click', () => {
+    if (currentMangaState.currentChapterIndex < currentMangaState.chapters.length - 1) {
+      const prevCh = currentMangaState.chapters[currentMangaState.currentChapterIndex + 1];
+      if (prevCh && currentMangaState.manga) openMangaReader(currentMangaState.manga.id, prevCh.id, 1);
+    }
+  });
+
+  $('#btnNextChapter')?.addEventListener('click', () => {
+    if (currentMangaState.currentChapterIndex > 0) {
+      const nextCh = currentMangaState.chapters[currentMangaState.currentChapterIndex - 1];
+      if (nextCh && currentMangaState.manga) openMangaReader(currentMangaState.manga.id, nextCh.id, 1);
+    }
+  });
+
+  $('#readerChapterSelect')?.addEventListener('change', (e) => {
+    const chId = e.target.value;
+    if (chId && currentMangaState.manga) openMangaReader(currentMangaState.manga.id, chId, 1);
+  });
+});
