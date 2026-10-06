@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a10">
+<title>Otaku-World — Anime & Manga</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://graphql.anilist.co">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="splash"><div class="splash-logo">OTAKU<span>WORLD</span></div></div>
+
+<header id="topbar">
+  <button class="icon-btn" id="btnMenu" aria-label="Menu">
+    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+  <a class="brand" href="#" data-nav="home">OTAKU<span>WORLD</span></a>
+  <div class="top-actions">
+    <button class="icon-btn" id="btnSearch" aria-label="Recherche">
+      <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="avatar-btn" id="btnProfile" aria-label="Profil">
+      <img id="navAvatar" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' rx='32' fill='%232a2a3a'/%3E%3Ctext x='32' y='40' text-anchor='middle' fill='%23aaa' font-size='26'%3E%3F%3C/text%3E%3C/svg%3E">
+    </button>
+  </div>
+</header>
+
+<nav id="sidebar">
+  <a href="#" data-nav="home" class="side-link active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Accueil</span></a>
+  <a href="#" data-nav="search" class="side-link"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Recherche</span></a>
+  <a href="#" data-nav="library" class="side-link"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg><span>Ma bibliothèque</span></a>
+  <a href="#" data-nav="calendar" class="side-link"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg><span>Planning</span></a>
+  <a href="#" data-nav="profile" class="side-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Profil</span></a>
+</nav>
+
+<main id="main">
+  <section id="hero" class="hero">
+    <div class="hero-backdrop" id="heroBackdrop"></div>
+    <div class="hero-fade"></div>
+    <div class="hero-content" id="heroContent">
+      <div class="skeleton skel-hero-title"></div>
+      <div class="skeleton skel-hero-line"></div>
+    </div>
+  </section>
+
+  <section id="feed"></section>
+</main>
+
+<div id="searchView" class="page" hidden>
+  <div class="search-head">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="search" placeholder="Rechercher un anime, un manga…" autocomplete="off">
+    </div>
+    <div class="chip-row" id="searchChips">
+      <button class="chip active" data-type="ANIME">Anime</button>
+      <button class="chip" data-type="MANGA">Manga</button>
+    </div>
+  </div>
+  <div class="grid" id="searchGrid"></div>
+  <div id="searchEmpty" class="empty" hidden></div>
+</div>
+
+<div id="libraryView" class="page" hidden>
+  <h2 class="page-title">Ma bibliothèque</h2>
+  <div class="chip-row" id="libTabs">
+    <button class="chip active" data-list="favorites">Favoris</button>
+    <button class="chip" data-list="watchlist">À regarder</button>
+    <button class="chip" data-list="history">Historique</button>
+  </div>
+  <div class="grid" id="libraryGrid"></div>
+  <div id="libraryEmpty" class="empty" hidden></div>
+</div>
+
+<div id="detailView" class="page" hidden>
+  <button class="icon-btn back-btn" id="btnBackDetail" aria-label="Retour">
+    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+  </button>
+  <div id="detailContent"></div>
+</div>
+
+<nav id="bottomNav">
+  <a href="#" data-nav="home" class="bn-link active"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Accueil</span></a>
+  <a href="#" data-nav="search" class="bn-link"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Recherche</span></a>
+  <a href="#" data-nav="library" class="bn-link"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg><span>Biblio</span></a>
+  <a href="#" data-nav="calendar" class="bn-link"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2"/></svg><span>Planning</span></a>
+  <a href="#" data-nav="profile" class="bn-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 20c1.5-4 5-5 8-5s6.5 1 8 5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Profil</span></a>
+</nav>
+
+<div id="authModal" class="modal" hidden>
+  <div class="modal-card">
+    <button class="icon-btn modal-close" data-close>&times;</button>
+    <h3 id="authTitle">Connexion</h3>
+    <form id="authForm">
+      <input id="authEmail" type="email" placeholder="Email" required autocomplete="email">
+      <input id="authPass" type="password" placeholder="Mot de passe (6 caractères min.)" required minlength="6" autocomplete="current-password">
+      <button class="btn-primary" type="submit" id="authSubmit">Se connecter</button>
+    </form>
+    <p class="auth-switch" id="authSwitch">Pas de compte ? <a href="#" id="btnAuthMode">Créer un compte</a></p>
+    <p class="form-error" id="authError" hidden></p>
+  </div>
+</div>
+
+<div id="detailSheet" class="modal" hidden>
+  <div class="modal-card sheet" id="detailSheetCard"></div>
+</div>
+
+<div id="toasts"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
