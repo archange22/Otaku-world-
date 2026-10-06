@@ -1218,3 +1218,16 @@ setTimeout(() => {
   const splash = $('#splash');
   if (splash) splash.remove();
 }, 800);
+
+
+/* Écouteur global pour kova-catalog.js */
+document.addEventListener('kova:open', (e) => {
+  const { source, id, title } = e.detail || {};
+  if (source === 'mangadex' && id) {
+    if (typeof window.openMangaDetail === 'function') {
+      window.openMangaDetail(id);
+    }
+  } else if (source === 'anilist' && id) {
+    toast();
+  }
+});
