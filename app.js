@@ -604,8 +604,6 @@ async function fetchCatalog(reset = false) {
   }
 
   // --- BRANCHE ANIME : AniList GraphQL Intacte ---
-  if (state.catalog.loading) return;
-  state.catalog.loading = true;
 
   if (reset) {
     state.catalog.page = 1;
@@ -1682,6 +1680,7 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
   announceReader('Chargement du chapitre...');
   readerView.hidden = false;
   $('#readerLoading').hidden = false;
+  $('#readerLoading').style.display = 'flex';
   $('#readerPagesVertical').innerHTML = '';
 
   const manga = currentMangaState.manga;
@@ -1712,6 +1711,7 @@ window.openMangaReader = async function(mangaId, chapterId, initialPage = 1) {
   try {
     const pagesData = await mangadexAdapter.getChapterPages(chapterId, { dataSaver: currentMangaState.dataSaver });
     $('#readerLoading').hidden = true;
+    $('#readerLoading').style.display = 'none';
     currentMangaState.totalPages = pagesData.total;
     $('#readerPageCounter').textContent = `Page ${initialPage} / ${pagesData.total}`;
 
