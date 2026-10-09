@@ -110,7 +110,7 @@ export async function getTags(): Promise<{ id: string; name: string }[]> {
 
 export async function getManga(id: string) {
   const [d, stats] = await Promise.all([
-    md<{ data: RawManga }>(`manga/${id}`, { includes: ["cover_art", "author"], contentRating: RATINGS }),
+    md<{ data: RawManga }>(`manga/${id}`, { includes: ["cover_art", "author"] }),
     md<{ statistics: Record<string, { rating: { bayesian: number | null }; follows: number }> }>("statistics/manga", { manga: [id] }).catch(() => null),
   ]);
   const s = stats?.statistics[id];
