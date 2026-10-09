@@ -155,6 +155,9 @@ export async function getChapters(mangaId: string): Promise<Chapter[]> {
 export async function getChapterInfo(id: string) {
   const d = await md<{ data: any }>(`chapter/${id}`, { includes: ["manga"] });
   const mangaRel = d.data.relationships.find((r: Rel) => r.type === "manga");
+  if (!mangaRel?.id) throw new Error("Manga introuvable.");
+  // Protect direct chapter URLs too, not only navigation from the manga catalogue.
+  await getManga(mangaRel.id as string);
   return {
     mangaId: mangaRel.id as string,
     mangaTitle: mangaRel.attributes ? pick(mangaRel.attributes.title) : "",
