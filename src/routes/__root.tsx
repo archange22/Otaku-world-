@@ -10,7 +10,7 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X, Search, Settings, Shield } from "lucide-react";
+import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
