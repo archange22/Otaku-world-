@@ -110,10 +110,13 @@ export async function getTags(): Promise<{ id: string; name: string }[]> {
 
 export async function getManga(id: string) {
   const [d, stats] = await Promise.all([
-    md<{ data: RawManga }>(`manga/${id}`, { includes: ["cover_art", "author"] }),
+    md<{ data: RawManga }>(`manga/${id}`, { includes: ["cover_art", "author"], contentRating: RATINGS }),
     md<{ statistics: Record<string, { rating: { bayesian: number | null }; follows: number }> }>("statistics/manga", { manga: [id] }).catch(() => null),
   ]);
   const s = stats?.statistics[id];
+  // Defense in depth: never return erotica/pornographic or unrated titles to the UI.
+  const rating = d.data.attributes?.contentRating;
+  if (!RATINGS.includes(rating)) throw new Error("Ce contenu est bloqué par le filtre de sécurité.");
   return { ...mapManga(d.data), score: s?.rating.bayesian ?? null, follows: s?.follows ?? null };
 }
 
@@ -124,7 +127,7 @@ export async function getChapters(mangaId: string): Promise<Chapter[]> {
       limit: 500,
       offset,
       translatedLanguage: ["fr", "en"],
-      contentRating: [...RATINGS, "erotica"],
+      contentRating: RATINGS,
       includeExternalUrl: 0,
       includeEmptyPages: 0,
       includes: ["scanlation_group"],
