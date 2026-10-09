@@ -10,7 +10,7 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X } from "lucide-react";
+import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X, Download } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -111,6 +111,7 @@ const NAV = [
   { to: "/", label: "Accueil", icon: Home },
   { to: "/anime", label: "Anime", icon: Tv },
   { to: "/manga", label: "Manga", icon: BookOpen },
+  { to: "/downloads", label: "Hors ligne", icon: Download },
   { to: "/library", label: "Biblio", icon: Library },
 ] as const;
 
@@ -191,13 +192,13 @@ function RootComponent() {
       </main>
       {!reader && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
-          <div className="grid grid-cols-4">
+          <div className="grid grid-cols-5">
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
                 activeOptions={{ exact: n.to === "/" }}
-                className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-muted-foreground"
+                className="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold text-muted-foreground"
                 activeProps={{ className: "!text-primary" }}
               >
                 <n.icon className="h-5 w-5" />
