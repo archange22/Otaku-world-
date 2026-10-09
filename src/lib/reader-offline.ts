@@ -2,7 +2,7 @@ const DB_NAME = "kova-reader-offline";
 const STORE = "chapters";
 const MAX_BYTES = 350 * 1024 * 1024;
 
-type SavedChapter = { id: string; pages: Blob[]; savedAt: number; bytes: number };
+type SavedChapter = { id: string; pages: Blob[]; savedAt: number; bytes: number; meta?: { mangaId: string; mangaTitle: string; lang: string; chapter: string | null } };
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -42,6 +42,7 @@ export async function saveChapterOffline(
   id: string,
   urls: string[],
   onProgress?: (done: number, total: number) => void,
+  meta?: SavedChapter["meta"],
 ): Promise<void> {
   if (!urls.length) throw new Error("Aucune page disponible à télécharger.");
   const existing = await getSavedChapter(id);
@@ -65,7 +66,7 @@ export async function saveChapterOffline(
       throw new Error("Espace de stockage insuffisant. Supprime des téléchargements ou choisis un mode plus léger.");
     }
   }
-  await transaction("readwrite", (store) => store.put({ id, pages, savedAt: Date.now(), bytes } satisfies SavedChapter));
+  await transaction("readwrite", (store) => store.put({ id, pages, savedAt: Date.now(), bytes, meta } satisfies SavedChapter));
 }
 
 export async function removeSavedChapter(id: string): Promise<void> {
@@ -75,4 +76,17 @@ export async function removeSavedChapter(id: string): Promise<void> {
 export async function getOfflineSummary(): Promise<{ count: number; bytes: number }> {
   const all = await transaction("readonly", (store) => store.getAll() as IDBRequest<SavedChapter[]>);
   return all.reduce((sum, item) => ({ count: sum.count + 1, bytes: sum.bytes + item.bytes }), { count: 0, bytes: 0 });
+}
+
+export async function getSavedChaptersForManga(mangaId: string): Promise<Array<{ id: string; chapter: string | null; title: string | null; lang: string; pages: number; group: string | null; publishAt: string }>> {
+  const all = await transaction("readonly", (store) => store.getAll() as IDBRequest<SavedChapter[]>);
+  return all.filter((item) => item.meta?.mangaId === mangaId && item.meta).map((item) => ({
+    id: item.id,
+    chapter: item.meta!.chapter,
+    title: null,
+    lang: item.meta!.lang,
+    pages: item.pages.length,
+    group: "Téléchargé hors ligne",
+    publishAt: new Date(item.savedAt).toISOString(),
+  }));
 }
