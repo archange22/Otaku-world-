@@ -2,7 +2,7 @@ const DB_NAME = "kova-reader-offline";
 const STORE = "chapters";
 const MAX_BYTES = 350 * 1024 * 1024;
 
-type SavedChapter = { id: string; pages: Blob[]; savedAt: number; bytes: number; meta?: { mangaId: string; mangaTitle: string; lang: string; chapter: string | null } };
+export type SavedChapter = { id: string; pages: Blob[]; savedAt: number; bytes: number; meta?: { mangaId: string; mangaTitle: string; lang: string; chapter: string | null } };
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -76,6 +76,20 @@ export async function removeSavedChapter(id: string): Promise<void> {
 export async function getOfflineSummary(): Promise<{ count: number; bytes: number }> {
   const all = await transaction("readonly", (store) => store.getAll() as IDBRequest<SavedChapter[]>);
   return all.reduce((sum, item) => ({ count: sum.count + 1, bytes: sum.bytes + item.bytes }), { count: 0, bytes: 0 });
+}
+
+export async function getAllSavedChapters(): Promise<Array<{ id: string; savedAt: number; bytes: number; pages: number; mangaId: string; mangaTitle: string; lang: string; chapter: string | null }>> {
+  const all = await transaction("readonly", (store) => store.getAll() as IDBRequest<SavedChapter[]>);
+  return all.filter((item) => !!item.meta).map((item) => ({
+    id: item.id,
+    savedAt: item.savedAt,
+    bytes: item.bytes,
+    pages: item.pages.length,
+    mangaId: item.meta!.mangaId,
+    mangaTitle: item.meta!.mangaTitle,
+    lang: item.meta!.lang,
+    chapter: item.meta!.chapter,
+  })).sort((a, b) => b.savedAt - a.savedAt);
 }
 
 export async function getSavedChaptersForManga(mangaId: string): Promise<Array<{ id: string; chapter: string | null; title: string | null; lang: string; pages: number; group: string | null; publishAt: string }>> {
