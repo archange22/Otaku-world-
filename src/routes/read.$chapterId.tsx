@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Gauge, Loader2, RotateCw } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Gauge, Loader2, RotateCw, Download, WifiOff, Trash2 } from "lucide-react";
 import { getChapterInfo, getChapters, getPages, chapterLabel } from "@/lib/mangadex";
 import { lib } from "@/lib/library";
+import { getSavedChapter, getSavedPageUrls, saveChapterOffline, removeSavedChapter, getOfflineSummary } from "@/lib/reader-offline";
 
 export const Route = createFileRoute("/read/$chapterId")({
   head: () => ({
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/read/$chapterId")({
   component: Reader,
 });
 
-function Page({ src, index, eager }: { src: string; index: number; eager: boolean }) {
+function Page({ src, index, eager, retryKey }: { src: string; index: number; eager: boolean; retryKey: number }) {
   const [state, setState] = useState<"load" | "ok" | "err">("load");
   const [key, setKey] = useState(0);
   return (
@@ -45,10 +46,15 @@ function Page({ src, index, eager }: { src: string; index: number; eager: boolea
   );
 }
 
-function Reader() {
+function localStorageSafeSaver() {\n  if (typeof window === "undefined") return false;\n  try { return localStorage.getItem("kova:saver") === "1"; } catch { return false; }\n}\n\nfunction Reader() {
   const { chapterId } = Route.useParams();
   const navigate = useNavigate();
-  const [saver, setSaver] = useState(false);
+  const [mode, setMode] = useState<"eco-plus" | "eco" | "super" | "super-plus">("eco");
+  const saver = mode === "eco-plus" || localStorageSafeSaver();
+  const [offlineProgress, setOfflineProgress] = useState<{ done: number; total: number } | null>(null);
+  const [offlineError, setOfflineError] = useState<string | null>(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [retryKey, setRetryKey] = useState(0);
   const [page, setPage] = useState(0);
   const [ui, setUi] = useState(true);
   const restored = useRef(false);
@@ -61,7 +67,7 @@ function Reader() {
   const info = useQuery({ queryKey: ["chapter-info", chapterId], queryFn: () => getChapterInfo(chapterId) });
   const mangaId = info.data?.mangaId;
   const chapters = useQuery({ queryKey: ["chapters", mangaId], queryFn: () => getChapters(mangaId!), enabled: !!mangaId });
-  const pages = useQuery({ queryKey: ["pages", chapterId, saver], queryFn: () => getPages(chapterId, saver), enabled: !!info.data && !info.error, staleTime: 10 * 60_000 });
+  const pages = useQuery({ queryKey: ["pages", chapterId, saver], queryFn: async () => (await getSavedPageUrls(chapterId)) ?? getPages(chapterId, saver), enabled: !!info.data && !info.error, staleTime: 10 * 60_000 });
 
   const sameLang = useMemo(() => (chapters.data ?? []).filter((c) => c.lang === info.data?.lang), [chapters.data, info.data]);
   const idx = sameLang.findIndex((c) => c.id === chapterId);
@@ -106,7 +112,7 @@ function Reader() {
       const i = new Image();
       i.src = src;
     });
-  }, [page, pages.data]);
+  }, [page, pages.data, mode]);
 
   // Save progress
   useEffect(() => {
@@ -171,10 +177,10 @@ function Reader() {
         {info.isError && <div role="alert" className="m-4 rounded-2xl border border-destructive/30 bg-card p-6 text-center"><p className="font-semibold">Ce chapitre ne peut pas être ouvert.</p><p className="mt-2 text-sm text-muted-foreground">Il est peut-être indisponible ou bloqué par le filtre de sécurité.</p><button onClick={() => void info.refetch()} className="mt-4 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
         {pages.isLoading && info.data && <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
         {pages.error && <div role="alert" className="p-8 text-center text-muted-foreground"><p>Impossible de récupérer les planches de ce chapitre.</p><button onClick={() => void pages.refetch()} className="mt-3 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
-        {pages.data?.map((src, i) => <Page key={src} src={src} index={i} eager={i < 3} />)}
+        {pages.data?.map((src, i) => <Page key={src} src={src} index={i} eager={i === page || (mode !== "eco-plus" && i <= page + (mode === "eco" ? 1 : 3))} retryKey={retryKey} />)}
         {pages.data && (
           <div className="flex flex-col items-center gap-4 px-4 py-16 text-center">
-            <p className="text-sm text-muted-foreground">Fin du chapitre</p>
+            <p className="text-sm text-muted-foreground">Fin du chapitre</p>\n            <button onClick={() => void downloadChapter(chapterId)} disabled={!!offlineProgress} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold hover:border-primary disabled:opacity-50"><Download className="h-4 w-4" /> Télécharger ce chapitre</button>\n            <button onClick={() => void deleteChapterOffline()} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><Trash2 className="h-3.5 w-3.5" /> Supprimer le téléchargement de ce chapitre</button>
             {next ? (
               <button onClick={() => go(next.id)} className="bg-neon shadow-neon rounded-full px-6 py-3 text-sm font-bold text-primary-foreground">Chapitre suivant · {chapterLabel(next)}</button>
             ) : mangaId && <Link to="/manga/$id" params={{ id: mangaId }} className="rounded-full border px-6 py-3 text-sm font-bold">Retour à la fiche</Link>}
