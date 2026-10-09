@@ -62,7 +62,7 @@ function MangaDetail() {
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {(resume || first) && (
-                <Link to="/read/$chapterId" params={{ chapterId: resume?.chapterId ?? first!.id }} className="bg-neon shadow-neon inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-primary-foreground">
+                <Link to="/read/$chapterId" preload="intent" params={{ chapterId: resume?.chapterId ?? first!.id }} className="bg-neon shadow-neon inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-primary-foreground">
                   <BookOpen className="h-4 w-4" /> {resume ? `Reprendre · ${resume.chapterLabel.split(" — ")[0]}` : "Commencer"}
                 </Link>
               )}
@@ -98,7 +98,7 @@ function MangaDetail() {
             const read = progress[c.id] !== undefined;
             return (
               <li key={c.id}>
-                <Link to="/read/$chapterId" params={{ chapterId: c.id }} className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition hover:border-primary ${read ? "opacity-60" : ""}`}>
+                <Link to="/read/$chapterId" preload="intent" params={{ chapterId: c.id }} className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition hover:border-primary ${read ? "opacity-60" : ""}`}>
                   <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${c.lang === "fr" ? "bg-primary/20 text-primary" : "bg-accent/15 text-accent"}`}>{c.lang}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{chapterLabel(c)}</p>
