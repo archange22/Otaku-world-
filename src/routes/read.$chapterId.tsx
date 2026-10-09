@@ -50,7 +50,7 @@ function localStorageSafeSaver() {\n  if (typeof window === "undefined") return 
   const { chapterId } = Route.useParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"eco-plus" | "eco" | "super" | "super-plus">("eco");
-  const saver = mode === "eco-plus" || localStorageSafeSaver();
+  const saver = mode === "eco-plus";
   const [offlineProgress, setOfflineProgress] = useState<{ done: number; total: number } | null>(null);
   const [offlineError, setOfflineError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
