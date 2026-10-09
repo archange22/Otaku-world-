@@ -159,7 +159,7 @@ function Home() {
       {visibleSections.airing && <Rail title="En cours de diffusion" items={airing.data?.map(a2c)} loading={airing.isLoading} error={airing.isError} onRetry={() => void airing.refetch()} />}
       {visibleSections.manga && <Rail title="Mangas populaires" items={popManga.data?.map(m2c)} loading={popManga.isLoading} error={popManga.isError} onRetry={() => void popManga.refetch()} action={<Link to="/manga" className="text-sm font-semibold text-primary">Tout voir</Link>} />}
       {visibleSections.manhwa && <Rail title="Manhwas du moment" items={manhwa.data?.map(m2c)} loading={manhwa.isLoading} error={manhwa.isError} onRetry={() => void manhwa.refetch()} />}
-      {visibleSections.latest && <Rail title="Nouveaux chapitres" items={latest.data?.map(m2c)} loading={latest.isLoading} error={latest.isError} onRetry={() => void latest.refetch()} />
+      {visibleSections.latest && <Rail title="Nouveaux chapitres" items={latest.data?.map(m2c)} loading={latest.isLoading} error={latest.isError} onRetry={() => void latest.refetch()} />}
     </div>
   );
 }
