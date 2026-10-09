@@ -152,6 +152,7 @@ function RootComponent() {
                     {NAV.map((n) => (
                       <Link
                         key={n.to}
+                        preload="intent"
                         to={n.to}
                         activeOptions={{ exact: n.to === "/" }}
                         onClick={() => setMenuOpen(false)}
@@ -174,6 +175,7 @@ function RootComponent() {
                 {NAV.map((n) => (
                   <Link
                     key={n.to}
+                    preload="intent"
                     to={n.to}
                     activeOptions={{ exact: n.to === "/" }}
                     className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
