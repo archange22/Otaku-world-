@@ -54,7 +54,7 @@ export async function searchAnime(q: AnimeQuery): Promise<Anime[]> {
 }
 
 export async function getAnime(id: number): Promise<Anime> {
-  const query = `query($id:Int){ Media(id:$id,type:ANIME){ ${FIELDS} duration trailer{id site} studios(isMain:true){nodes{name}} } }`;
+  const query = `query($id:Int){ Media(id:$id,type:ANIME,isAdult:false){ ${FIELDS} duration trailer{id site} studios(isMain:true){nodes{name}} } }`;
   const d = await gql<{ Media: Anime }>(query, { id });
   return d.Media;
 }
