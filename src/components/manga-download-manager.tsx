@@ -35,7 +35,9 @@ export function MangaDownloadManager({ mangaId, mangaTitle, chapters }: Props) {
   const refreshSaved = async () => setSaved(await getOfflineSummary());
 
   const toggle = (id: string) => setSelected((current) =>
-    current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    current.length === 0
+      ? sorted.filter((chapter) => chapter.id !== id).map((chapter) => chapter.id)
+      : current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
   );
 
   const download = async () => {
@@ -105,7 +107,7 @@ export function MangaDownloadManager({ mangaId, mangaTitle, chapters }: Props) {
           Sélectionner tout
         </button>
         <button type="button" onClick={() => setSelected([])} disabled={running || !selected.length} className="rounded-full border px-3 py-1.5 text-xs text-muted-foreground disabled:opacity-50">
-          Effacer la sélection
+          Revenir à tous les chapitres
         </button>
       </div>
 
@@ -117,7 +119,7 @@ export function MangaDownloadManager({ mangaId, mangaTitle, chapters }: Props) {
           <div className="max-h-64 overflow-y-auto border-t p-2">
             {sorted.map((chapter) => (
               <label key={chapter.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-secondary/70">
-                <input type="checkbox" checked={selected.includes(chapter.id)} onChange={() => toggle(chapter.id)} disabled={running} className="h-4 w-4 accent-primary" />
+                <input type="checkbox" checked={!selected.length || selected.includes(chapter.id)} onChange={() => toggle(chapter.id)} disabled={running} className="h-4 w-4 accent-primary" />
                 <span className="min-w-0 flex-1 truncate text-sm">{chapterLabel(chapter)}</span>
                 <span className="text-xs text-muted-foreground">{chapter.pages} p.</span>
               </label>
