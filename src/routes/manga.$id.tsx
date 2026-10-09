@@ -5,6 +5,7 @@ import { Heart, Star, BookOpen, ArrowDownUp } from "lucide-react";
 import { getManga, getChapters, chapterLabel } from "@/lib/mangadex";
 import { lib, useLibrary } from "@/lib/library";
 import { ErrorBox, Chip } from "@/components/kova";
+import { MangaDownloadManager } from "@/components/manga-download-manager";
 
 export const Route = createFileRoute("/manga/$id")({
   head: () => ({
@@ -78,6 +79,8 @@ function MangaDetail() {
         <h2 className="mb-3 mt-8 text-lg font-bold">Synopsis</h2>
         <p className="whitespace-pre-line leading-relaxed text-muted-foreground">{d.description.split(/\n-{3,}/)[0]!.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").trim() || "Pas de synopsis."}</p>
 
+        <MangaDownloadManager mangaId={id} mangaTitle={d.title} chapters={list} />
+
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold">Chapitres {ch.data && <span className="text-muted-foreground">({list.length})</span>}</h2>
           <div className="flex items-center gap-2">
@@ -88,6 +91,7 @@ function MangaDetail() {
           </div>
         </div>
         {ch.isLoading && <div className="mt-4 space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />)}</div>}
+        {ch.error && <ErrorBox msg="Impossible de charger les chapitres." onRetry={() => void ch.refetch()} />}
         {ch.data && list.length === 0 && <p className="mt-6 text-muted-foreground">Aucun chapitre lisible disponible dans cette langue.</p>}
         <ul className="mt-4 grid gap-2 md:grid-cols-2">
           {list.map((c) => {
