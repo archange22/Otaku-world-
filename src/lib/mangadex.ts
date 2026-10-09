@@ -1,3 +1,5 @@
+import { getSavedChapter, getSavedChaptersForManga } from "@/lib/reader-offline";
+
 type Rel = { id: string; type: string; attributes?: any };
 type RawManga = { id: string; attributes: any; relationships: Rel[] };
 
@@ -131,6 +133,7 @@ export async function getManga(id: string) {
 
 export async function getChapters(mangaId: string): Promise<Chapter[]> {
   const out: Chapter[] = [];
+  try {
   for (let offset = 0; offset < 1500; offset += 500) {
     const d = await md<{ data: any[]; total: number }>(`manga/${mangaId}/feed`, {
       limit: 500,
@@ -159,9 +162,16 @@ export async function getChapters(mangaId: string): Promise<Chapter[]> {
     if (offset + 500 >= d.total) break;
   }
   return out;
+  } catch (error) {
+    const offline = await getSavedChaptersForManga(mangaId).catch(() => []);
+    if (offline.length) return offline.sort((a, b) => Number(a.chapter ?? 0) - Number(b.chapter ?? 0));
+    throw error;
+  }
 }
 
 export async function getChapterInfo(id: string) {
+  const saved = await getSavedChapter(id).catch(() => undefined);
+  if (saved?.meta) return { mangaId: saved.meta.mangaId, mangaTitle: saved.meta.mangaTitle, lang: saved.meta.lang, chapter: saved.meta.chapter };
   const d = await md<{ data: any }>(`chapter/${id}`, { includes: ["manga"] });
   const mangaRel = d.data.relationships.find((r: Rel) => r.type === "manga");
   if (!mangaRel?.id) throw new Error("Manga introuvable.");
