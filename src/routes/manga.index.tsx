@@ -46,7 +46,8 @@ function MangaCatalog() {
         </div>
         <SortSelect value={sort ?? "followedCount"} onChange={(v) => setSort(v as MangaQuery["sort"])} options={SORTS} />
       </Filters>
-      {q.error && <ErrorBox msg="Impossible de joindre MangaDex pour le moment." />}
+      {tags.error && <ErrorBox msg="Les genres MangaDex sont indisponibles." onRetry={() => void tags.refetch()} />}
+      {q.error && <ErrorBox msg="Impossible de joindre MangaDex pour le moment." onRetry={() => void q.refetch()} />}
       <div className={`mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:gap-5 lg:grid-cols-6 ${q.isFetching ? "opacity-60" : ""} transition-opacity`}>
         {q.isLoading
           ? Array.from({ length: 18 }).map((_, i) => <CardSkeleton key={i} />)

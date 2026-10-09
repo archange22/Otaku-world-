@@ -47,9 +47,21 @@ async function md<T = any>(path: string, params: Parameters<typeof qs>[0] = {}):
       proxyBroken = true;
     }
   }
-  const res = await fetch(`https://api.mangadex.org/${path}?${query}`);
-  if (!res.ok) throw new Error(`MangaDex ${res.status}`);
-  return res.json();
+  let res: Response;
+  try {
+    res = await fetch(`https://api.mangadex.org/${path}?${query}`);
+  } catch {
+    throw new Error("MangaDex est inaccessible. Vérifie ta connexion puis réessaie.");
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`MangaDex ${res.status}${detail ? `: ${detail.slice(0, 120)}` : ""}`);
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error("MangaDex a renvoyé une réponse invalide.");
+  }
 }
 
 export const proxImg = (u: string) => u;
@@ -62,14 +74,14 @@ function mapManga(m: RawManga): Manga {
   const cov = m.relationships.find((r) => r.type === "cover_art")?.attributes?.fileName;
   const base = cov ? `https://uploads.mangadex.org/covers/${m.id}/${cov}` : null;
   const ol = a.originalLanguage as string;
-  const altFr = (a.altTitles as any[]).find((t) => t.fr)?.fr;
+  const altFr = ((a.altTitles as any[]) ?? []).find((t) => t.fr)?.fr;
   return {
     id: m.id,
     title: altFr || pick(a.title),
     description: pick(a.description),
     cover: base ? proxImg(`${base}.512.jpg`) : null,
     coverHq: base ? proxImg(base) : null,
-    tags: (a.tags as any[]).filter((t) => t.attributes.group === "genre").map((t) => pick(t.attributes.name)),
+    tags: ((a.tags as any[]) ?? []).filter((t) => t.attributes.group === "genre").map((t) => pick(t.attributes.name)),
     status: a.status,
     year: a.year,
     kind: ol === "ja" ? "Manga" : ol === "ko" ? "Manhwa" : ol?.startsWith("zh") ? "Manhua" : "Autre",

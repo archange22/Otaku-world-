@@ -61,7 +61,7 @@ function Reader() {
   const info = useQuery({ queryKey: ["chapter-info", chapterId], queryFn: () => getChapterInfo(chapterId) });
   const mangaId = info.data?.mangaId;
   const chapters = useQuery({ queryKey: ["chapters", mangaId], queryFn: () => getChapters(mangaId!), enabled: !!mangaId });
-  const pages = useQuery({ queryKey: ["pages", chapterId, saver], queryFn: () => getPages(chapterId, saver), staleTime: 10 * 60_000 });
+  const pages = useQuery({ queryKey: ["pages", chapterId, saver], queryFn: () => getPages(chapterId, saver), enabled: !!info.data && !info.error, staleTime: 10 * 60_000 });
 
   const sameLang = useMemo(() => (chapters.data ?? []).filter((c) => c.lang === info.data?.lang), [chapters.data, info.data]);
   const idx = sameLang.findIndex((c) => c.id === chapterId);
@@ -168,8 +168,9 @@ function Reader() {
       </header>
 
       <div className="mx-auto max-w-3xl pt-14">
-        {pages.isLoading && <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
-        {pages.error && <div className="p-8 text-center text-muted-foreground">Impossible de récupérer les planches de ce chapitre.</div>}
+        {info.isError && <div role="alert" className="m-4 rounded-2xl border border-destructive/30 bg-card p-6 text-center"><p className="font-semibold">Ce chapitre ne peut pas être ouvert.</p><p className="mt-2 text-sm text-muted-foreground">Il est peut-être indisponible ou bloqué par le filtre de sécurité.</p><button onClick={() => void info.refetch()} className="mt-4 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
+        {pages.isLoading && info.data && <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+        {pages.error && <div role="alert" className="p-8 text-center text-muted-foreground"><p>Impossible de récupérer les planches de ce chapitre.</p><button onClick={() => void pages.refetch()} className="mt-3 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
         {pages.data?.map((src, i) => <Page key={src} src={src} index={i} eager={i < 3} />)}
         {pages.data && (
           <div className="flex flex-col items-center gap-4 px-4 py-16 text-center">

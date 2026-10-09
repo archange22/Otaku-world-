@@ -54,7 +54,7 @@ function AnimeCatalog() {
         </div>
         <SortSelect value={sort} onChange={setSort} options={SORTS} />
       </Filters>
-      {q.error && <ErrorBox msg="Impossible de charger les animes." />}
+      {q.error && <ErrorBox msg="Impossible de charger les animes." onRetry={() => void q.refetch()} />}
       <div className={`mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:gap-5 lg:grid-cols-6 ${q.isFetching ? "opacity-60" : ""} transition-opacity`}>
         {q.isLoading
           ? Array.from({ length: 18 }).map((_, i) => <CardSkeleton key={i} />)
