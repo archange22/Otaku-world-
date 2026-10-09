@@ -23,12 +23,13 @@ type ReaderMode = "eco-plus" | "eco" | "super" | "super-plus";
 
 function Page({ src, index, eager, retryKey }: { src: string; index: number; eager: boolean; retryKey: number }) {
   const [state, setState] = useState<"load" | "ok" | "err">("load");
+  const [attempt, setAttempt] = useState(0);
   return (
     <div data-page={index} className="relative w-full" style={{ minHeight: state === "ok" ? undefined : "50vh" }}>
       {state !== "ok" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
           {state === "load" ? <Loader2 className="h-7 w-7 animate-spin text-primary" /> : (
-            <button onClick={() => setState("load")} className="flex items-center gap-2 rounded-full border px-4 py-2 text-sm">
+            <button onClick={() => { setState("load"); setAttempt((value) => value + 1); }} className="flex items-center gap-2 rounded-full border px-4 py-2 text-sm">
               <RotateCw className="h-4 w-4" /> Réessayer l’image
             </button>
           )}
@@ -36,7 +37,7 @@ function Page({ src, index, eager, retryKey }: { src: string; index: number; eag
         </div>
       )}
       <img
-        key={src + ":" + retryKey}
+        key={src + ":" + retryKey + ":" + attempt}
         src={src}
         alt={"Page " + (index + 1)}
         loading={eager ? "eager" : "lazy"}
@@ -167,7 +168,7 @@ function Reader() {
     setOfflineError(null);
     try {
       const urls = await getPages(id, mode === "eco-plus");
-      await saveChapterOffline(id, urls, (done, count) => setOfflineProgress({ done, total: count }));
+      await saveChapterOffline(id, urls, (done, count) => setOfflineProgress({ done, total: count }), info.data ? { mangaId: info.data.mangaId, mangaTitle: info.data.mangaTitle, lang: info.data.lang, chapter: info.data.chapter } : undefined);
       const summary = await getOfflineSummary();
       setSavedCount(summary.count);
     } catch (error) {
@@ -189,7 +190,7 @@ function Reader() {
       for (const chapter of sameLang) {
         if (!await getSavedChapter(chapter.id)) {
           const urls = await getPages(chapter.id, true);
-          await saveChapterOffline(chapter.id, urls);
+          await saveChapterOffline(chapter.id, urls, undefined, { mangaId: mangaId!, mangaTitle: info.data?.mangaTitle ?? "Manga", lang: chapter.lang, chapter: chapter.chapter });
         }
         done += 1;
         setOfflineProgress({ done, total: sameLang.length });
