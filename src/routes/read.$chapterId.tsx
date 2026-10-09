@@ -116,13 +116,35 @@ function Reader() {
     return () => observer.disconnect();
   }, [pages.data]);
 
+  // Précharge les pages proches de la position actuelle selon le mode choisi.
   useEffect(() => {
-    const ahead = mode === "eco-plus" ? 0 : mode === "eco" ? 1 : 3;
+    const ahead = mode === "eco-plus" ? 0 : mode === "eco" ? 1 : mode === "super" ? 3 : 5;
     pages.data?.slice(page + 1, page + 1 + ahead).forEach((src) => {
       const image = new Image();
+      image.decoding = "async";
       image.src = src;
     });
   }, [page, pages.data, mode]);
+
+  // En mode Super/Super+, prépare aussi les deux premières pages du chapitre suivant.
+  // Cela ne télécharge pas tout le chapitre et évite de saturer les données mobiles.
+  useEffect(() => {
+    if (!next || (mode !== "super" && mode !== "super-plus") || !navigator.onLine) return;
+    let cancelled = false;
+    void getPages(next.id, mode === "eco-plus")
+      .then((urls) => {
+        if (cancelled) return;
+        urls.slice(0, 2).forEach((src) => {
+          const image = new Image();
+          image.decoding = "async";
+          image.src = src;
+        });
+      })
+      .catch(() => {
+        // Le préchargement est facultatif : la lecture normale reste disponible.
+      });
+    return () => { cancelled = true; };
+  }, [next?.id, mode]);
 
   useEffect(() => {
     if (!pages.data || !mangaId || !restored.current) return;
@@ -241,7 +263,7 @@ function Reader() {
       <div className="mx-auto max-w-3xl pt-14">
         <div className="mx-3 mt-2 flex flex-wrap items-center gap-2 rounded-xl border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
           <Gauge className="h-4 w-4 text-primary" />
-          <span>{mode === "eco-plus" ? "Une page à la fois, qualité légère" : mode === "eco" ? "Précharge la page suivante" : mode === "super" ? "Précharge 3 pages" : "Téléchargement hors ligne disponible"}</span>
+          <span>{mode === "eco-plus" ? "Une page à la fois, qualité légère" : mode === "eco" ? "Précharge la page suivante" : mode === "super" ? "Précharge 3 pages + début du chapitre suivant" : "Précharge 5 pages + début du chapitre suivant"}</span>
           <span className="ml-auto inline-flex items-center gap-1"><WifiOff className="h-3.5 w-3.5" /> {savedCount} chap. hors ligne</span>
           {mode === "super-plus" && <button onClick={() => void downloadAllChapters()} disabled={!!offlineProgress || chapters.isLoading} className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5 font-bold text-primary disabled:opacity-50"><Download className="h-3.5 w-3.5" /> {offlineProgress ? "Téléchargement " + offlineProgress.done + "/" + offlineProgress.total : "Télécharger tous les chapitres"}</button>}
         </div>
@@ -249,7 +271,7 @@ function Reader() {
         {info.isError && <div role="alert" className="m-4 rounded-2xl border border-destructive/30 bg-card p-6 text-center"><p className="font-semibold">Ce chapitre ne peut pas être ouvert.</p><p className="mt-2 text-sm text-muted-foreground">Il est peut-être indisponible ou bloqué par le filtre de sécurité.</p><button onClick={() => void info.refetch()} className="mt-4 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
         {pages.isLoading && info.data && <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
         {pages.error && <div role="alert" className="p-8 text-center text-muted-foreground"><p>Impossible de récupérer les planches de ce chapitre.</p><button onClick={() => void pages.refetch()} className="mt-3 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
-        {pages.data?.map((src, index) => <Page key={src + ":" + retryKey} src={src} index={index} eager={index === page || (mode !== "eco-plus" && index <= page + (mode === "eco" ? 1 : 3))} retryKey={retryKey} />)}
+        {pages.data?.map((src, index) => <Page key={src + ":" + retryKey} src={src} index={index} eager={index === page || (mode !== "eco-plus" && index <= page + (mode === "eco" ? 1 : mode === "super" ? 3 : 5))} retryKey={retryKey} />)}
         {pages.data && (
           <div className="flex flex-col items-center gap-4 px-4 py-16 text-center">
             <p className="text-sm text-muted-foreground">Fin du chapitre</p>
