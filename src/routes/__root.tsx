@@ -121,8 +121,7 @@ function RootComponent() {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <QueryClientProvider client={queryClient}>
-      {!reader && (
-        <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl">
           <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:h-16 md:px-8">
             <div className="flex min-w-0 items-center gap-2">
               <button
@@ -186,8 +185,7 @@ function RootComponent() {
               <AccountButton />
             </div>
           </div>
-        </header>
-      )}
+      </header>
       <main className={reader ? "" : "pb-24 md:pb-12"}>
         <Outlet />
       </main>
