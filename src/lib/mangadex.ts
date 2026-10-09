@@ -42,10 +42,8 @@ async function md<T = any>(path: string, params: Parameters<typeof qs>[0] = {}):
     try {
       const res = await fetch(`/api/public/md/${path}?${query}`);
       if (res.ok && (res.headers.get("content-type") ?? "").includes("json")) return (await res.json()) as T;
-      if (res.status < 500 && res.status !== 404 && (res.headers.get("content-type") ?? "").includes("json")) throw new Error(`MangaDex ${res.status}`);
       proxyBroken = true;
-    } catch (e) {
-      if (e instanceof Error && e.message.startsWith("MangaDex")) throw e;
+    } catch {
       proxyBroken = true;
     }
   }
@@ -92,7 +90,6 @@ export async function searchManga(q: MangaQuery): Promise<Manga[]> {
     "includes": ["cover_art"],
     contentRating: RATINGS,
     availableTranslatedLanguage: ["fr", "en"],
-    hasAvailableChapters: "true",
     originalLanguage: q.kind ? LANG_BY_KIND[q.kind] : undefined,
     includedTags: q.tag ? [q.tag] : undefined,
     ...(sort ? { [`order[${sort}]`]: "desc" } : { "order[relevance]": "desc" }),
