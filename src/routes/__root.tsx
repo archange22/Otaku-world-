@@ -9,8 +9,8 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { Home, Tv, BookOpen, Library, User as UserIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -118,16 +118,56 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const reader = path.startsWith("/read/");
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <QueryClientProvider client={queryClient}>
-      {!reader && (
-        <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl">
-          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:h-16 md:px-8">
-            <Link to="/" className="flex items-center gap-2 font-display text-xl font-extrabold tracking-tight">
-              <img src={logo} alt="" className="h-9 w-9 rounded-lg object-cover md:h-10 md:w-10" />
-              <span className="text-neon">KOVA</span>
-              <span className="ml-1 hidden text-xs font-medium text-muted-foreground sm:inline">Otaku-World</span>
-            </Link>
+      <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur-xl">
+          <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-3 md:h-16 md:px-8">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card/80 transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+              <Link to="/" onClick={() => setMenuOpen(false)} className="flex min-w-0 items-center gap-2 font-display text-xl font-extrabold tracking-tight">
+                <img src={logo} alt="" className="h-9 w-9 rounded-lg object-cover md:h-10 md:w-10" />
+                <span className="text-neon">KOVA</span>
+                <span className="ml-1 hidden text-xs font-medium text-muted-foreground sm:inline">Otaku-World</span>
+              </Link>
+            </div>
+            {menuOpen && (
+              <>
+                <button aria-label="Fermer le menu" className="fixed inset-0 z-40 cursor-default bg-black/40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute left-3 top-[calc(100%+8px)] z-50 w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl md:left-8">
+                  <div className="border-b border-border bg-card/70 px-4 py-3">
+                    <p className="font-display text-sm font-extrabold tracking-wide"><span className="text-neon">KOVA</span> · Navigation</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Explore ton univers otaku</p>
+                  </div>
+                  <nav className="p-2">
+                    {NAV.map((n) => (
+                      <Link
+                        key={n.to}
+                        to={n.to}
+                        activeOptions={{ exact: n.to === "/" }}
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                        activeProps={{ className: "bg-secondary !text-foreground" }}
+                      >
+                        <n.icon className="h-5 w-5" />
+                        {n.label === "Biblio" ? "Ma bibliothèque" : n.label}
+                      </Link>
+                    ))}
+                    <Link to="/auth" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground">
+                      <UserIcon className="h-5 w-5" /> Mon compte / Connexion
+                    </Link>
+                  </nav>
+                </div>
+              </>
+            )}
             <div className="flex items-center gap-2">
               <nav className="hidden gap-1 md:flex">
                 {NAV.map((n) => (
@@ -145,8 +185,7 @@ function RootComponent() {
               <AccountButton />
             </div>
           </div>
-        </header>
-      )}
+      </header>
       <main className={reader ? "" : "pb-24 md:pb-12"}>
         <Outlet />
       </main>

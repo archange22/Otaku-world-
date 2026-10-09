@@ -18,13 +18,25 @@ export type Anime = {
 const FIELDS = `id title{romaji english} coverImage{extraLarge large color} bannerImage averageScore format episodes status genres description(asHtml:false) seasonYear`;
 
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  const res = await fetch("https://graphql.anilist.co", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = await res.json();
-  if (json.errors) throw new Error(json.errors[0]?.message ?? "AniList error");
+  let res: Response;
+  try {
+    res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
+  } catch {
+    throw new Error("AniList est inaccessible. Vérifie ta connexion puis réessaie.");
+  }
+
+  const json = await res.json().catch(() => null) as { errors?: { message?: string }[]; data?: T } | null;
+  if (!res.ok) {
+    const apiMessage = json?.errors?.[0]?.message;
+    throw new Error(apiMessage || `AniList a répondu avec le statut ${res.status}.`);
+  }
+  if (!json) throw new Error("AniList a renvoyé une réponse invalide.");
+  if (json.errors?.length) throw new Error(json.errors[0]?.message ?? "Erreur AniList.");
+  if (!json.data) throw new Error("AniList n'a renvoyé aucune donnée.");
   return json.data;
 }
 
@@ -54,7 +66,7 @@ export async function searchAnime(q: AnimeQuery): Promise<Anime[]> {
 }
 
 export async function getAnime(id: number): Promise<Anime> {
-  const query = `query($id:Int){ Media(id:$id,type:ANIME){ ${FIELDS} duration trailer{id site} studios(isMain:true){nodes{name}} } }`;
+  const query = `query($id:Int){ Media(id:$id,type:ANIME,isAdult:false){ ${FIELDS} duration trailer{id site} studios(isMain:true){nodes{name}} } }`;
   const d = await gql<{ Media: Anime }>(query, { id });
   return d.Media;
 }

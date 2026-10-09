@@ -42,16 +42,26 @@ async function md<T = any>(path: string, params: Parameters<typeof qs>[0] = {}):
     try {
       const res = await fetch(`/api/public/md/${path}?${query}`);
       if (res.ok && (res.headers.get("content-type") ?? "").includes("json")) return (await res.json()) as T;
-      if (res.status < 500 && res.status !== 404 && (res.headers.get("content-type") ?? "").includes("json")) throw new Error(`MangaDex ${res.status}`);
       proxyBroken = true;
-    } catch (e) {
-      if (e instanceof Error && e.message.startsWith("MangaDex")) throw e;
+    } catch {
       proxyBroken = true;
     }
   }
-  const res = await fetch(`https://api.mangadex.org/${path}?${query}`);
-  if (!res.ok) throw new Error(`MangaDex ${res.status}`);
-  return res.json();
+  let res: Response;
+  try {
+    res = await fetch(`https://api.mangadex.org/${path}?${query}`);
+  } catch {
+    throw new Error("MangaDex est inaccessible. Vérifie ta connexion puis réessaie.");
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`MangaDex ${res.status}${detail ? `: ${detail.slice(0, 120)}` : ""}`);
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error("MangaDex a renvoyé une réponse invalide.");
+  }
 }
 
 export const proxImg = (u: string) => u;
@@ -64,14 +74,14 @@ function mapManga(m: RawManga): Manga {
   const cov = m.relationships.find((r) => r.type === "cover_art")?.attributes?.fileName;
   const base = cov ? `https://uploads.mangadex.org/covers/${m.id}/${cov}` : null;
   const ol = a.originalLanguage as string;
-  const altFr = (a.altTitles as any[]).find((t) => t.fr)?.fr;
+  const altFr = ((a.altTitles as any[]) ?? []).find((t) => t.fr)?.fr;
   return {
     id: m.id,
     title: altFr || pick(a.title),
     description: pick(a.description),
     cover: base ? proxImg(`${base}.512.jpg`) : null,
     coverHq: base ? proxImg(base) : null,
-    tags: (a.tags as any[]).filter((t) => t.attributes.group === "genre").map((t) => pick(t.attributes.name)),
+    tags: ((a.tags as any[]) ?? []).filter((t) => t.attributes.group === "genre").map((t) => pick(t.attributes.name)),
     status: a.status,
     year: a.year,
     kind: ol === "ja" ? "Manga" : ol === "ko" ? "Manhwa" : ol?.startsWith("zh") ? "Manhua" : "Autre",
@@ -92,7 +102,6 @@ export async function searchManga(q: MangaQuery): Promise<Manga[]> {
     "includes": ["cover_art"],
     contentRating: RATINGS,
     availableTranslatedLanguage: ["fr", "en"],
-    hasAvailableChapters: "true",
     originalLanguage: q.kind ? LANG_BY_KIND[q.kind] : undefined,
     includedTags: q.tag ? [q.tag] : undefined,
     ...(sort ? { [`order[${sort}]`]: "desc" } : { "order[relevance]": "desc" }),
@@ -114,6 +123,9 @@ export async function getManga(id: string) {
     md<{ statistics: Record<string, { rating: { bayesian: number | null }; follows: number }> }>("statistics/manga", { manga: [id] }).catch(() => null),
   ]);
   const s = stats?.statistics[id];
+  // Defense in depth: never return erotica/pornographic or unrated titles to the UI.
+  const rating = d.data.attributes?.contentRating;
+  if (!RATINGS.includes(rating)) throw new Error("Ce contenu est bloqué par le filtre de sécurité.");
   return { ...mapManga(d.data), score: s?.rating.bayesian ?? null, follows: s?.follows ?? null };
 }
 
@@ -124,7 +136,7 @@ export async function getChapters(mangaId: string): Promise<Chapter[]> {
       limit: 500,
       offset,
       translatedLanguage: ["fr", "en"],
-      contentRating: [...RATINGS, "erotica"],
+      contentRating: RATINGS,
       includeExternalUrl: 0,
       includeEmptyPages: 0,
       includes: ["scanlation_group"],
@@ -152,6 +164,9 @@ export async function getChapters(mangaId: string): Promise<Chapter[]> {
 export async function getChapterInfo(id: string) {
   const d = await md<{ data: any }>(`chapter/${id}`, { includes: ["manga"] });
   const mangaRel = d.data.relationships.find((r: Rel) => r.type === "manga");
+  if (!mangaRel?.id) throw new Error("Manga introuvable.");
+  // Protect direct chapter URLs too, not only navigation from the manga catalogue.
+  await getManga(mangaRel.id as string);
   return {
     mangaId: mangaRel.id as string,
     mangaTitle: mangaRel.attributes ? pick(mangaRel.attributes.title) : "",

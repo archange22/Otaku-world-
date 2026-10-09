@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { searchAnime, animeTitle, ANIME_GENRES } from "@/lib/anilist";
 import { MediaCard, CardSkeleton, Chip, ErrorBox } from "@/components/kova";
+import { ContentSafetyNotice } from "@/components/content-safety-notice";
 
 export const Route = createFileRoute("/anime/")({
   head: () => ({
@@ -44,6 +45,7 @@ function AnimeCatalog() {
   return (
     <div className="mx-auto max-w-7xl px-4 pt-6 md:px-8">
       <h1 className="text-2xl font-extrabold md:text-4xl">Anime</h1>
+      <ContentSafetyNotice />
       <Filters search={search} setSearch={setSearch} placeholder="Rechercher un anime…">
         <div className="no-scrollbar flex gap-2 overflow-x-auto">{FORMATS.map(([v, l]) => <Chip key={v} active={format === v} onClick={() => setFormat(v ?? "")}>{l}</Chip>)}</div>
         <div className="no-scrollbar flex gap-2 overflow-x-auto">
@@ -52,7 +54,7 @@ function AnimeCatalog() {
         </div>
         <SortSelect value={sort} onChange={setSort} options={SORTS} />
       </Filters>
-      {q.error && <ErrorBox msg="Impossible de charger les animes." />}
+      {q.error && <ErrorBox msg="Impossible de charger les animes." onRetry={() => void q.refetch()} />}
       <div className={`mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:gap-5 lg:grid-cols-6 ${q.isFetching ? "opacity-60" : ""} transition-opacity`}>
         {q.isLoading
           ? Array.from({ length: 18 }).map((_, i) => <CardSkeleton key={i} />)

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 
 export type CardData = { id: string; title: string; cover: string | null; score?: number | null; sub?: string; kind: "anime" | "manga" };
@@ -41,7 +41,7 @@ export function CardSkeleton({ className = "" }: { className?: string }) {
   );
 }
 
-export function Rail({ title, action, items, loading }: { title: string; action?: ReactNode; items?: CardData[] | undefined; loading?: boolean }) {
+export function Rail({ title, action, items, loading, error, onRetry }: { title: string; action?: ReactNode; items?: CardData[] | undefined; loading?: boolean; error?: boolean; onRetry?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
   return (
@@ -55,9 +55,16 @@ export function Rail({ title, action, items, loading }: { title: string; action?
         </div>
       </div>
       <div ref={ref} className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 md:gap-4 md:px-8">
-        {loading || !items
+        {loading
           ? Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} className="w-32 shrink-0 md:w-44" />)
-          : items.map((d) => <MediaCard key={d.id} d={d} className="w-32 shrink-0 snap-start md:w-44" />)}
+          : error
+            ? <div className="flex min-h-28 min-w-full items-center justify-between gap-4 rounded-2xl border border-destructive/30 bg-card p-4">
+                <div><p className="text-sm font-semibold">Chargement impossible</p><p className="mt-1 text-xs text-muted-foreground">Le service externe ne répond pas pour le moment.</p></div>
+                {onRetry && <button onClick={onRetry} className="inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold hover:border-primary"><RotateCw className="h-3.5 w-3.5" /> Réessayer</button>}
+              </div>
+            : items?.length
+              ? items.map((d) => <MediaCard key={d.id} d={d} className="w-32 shrink-0 snap-start md:w-44" />)
+              : <p className="py-8 text-sm text-muted-foreground">Aucun résultat disponible pour cette section.</p>}
       </div>
     </section>
   );
@@ -74,6 +81,11 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
   );
 }
 
-export function ErrorBox({ msg }: { msg: string }) {
-  return <div className="m-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">{msg}</div>;
+export function ErrorBox({ msg, onRetry }: { msg: string; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="m-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+      <span>{msg}</span>
+      {onRetry && <button onClick={onRetry} className="inline-flex items-center gap-2 rounded-full border px-3 py-2 font-semibold hover:border-primary"><RotateCw className="h-4 w-4" /> Réessayer</button>}
+    </div>
+  );
 }

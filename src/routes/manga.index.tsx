@@ -4,6 +4,7 @@ import { useState } from "react";
 import { searchManga, getTags, type MangaQuery } from "@/lib/mangadex";
 import { MediaCard, CardSkeleton, Chip, ErrorBox } from "@/components/kova";
 import { Filters, SortSelect, useDebounced } from "./anime.index";
+import { ContentSafetyNotice } from "@/components/content-safety-notice";
 
 export const Route = createFileRoute("/manga/")({
   head: () => ({
@@ -36,6 +37,7 @@ function MangaCatalog() {
   return (
     <div className="mx-auto max-w-7xl px-4 pt-6 md:px-8">
       <h1 className="text-2xl font-extrabold md:text-4xl">Manga <span className="text-neon">&</span> Manhwa</h1>
+      <ContentSafetyNotice />
       <Filters search={search} setSearch={setSearch} placeholder="Rechercher un titre…">
         <div className="no-scrollbar flex gap-2 overflow-x-auto">{KINDS.map((k) => <Chip key={k} active={kind === k} onClick={() => setKind(k)}>{k || "Tous"}</Chip>)}</div>
         <div className="no-scrollbar flex gap-2 overflow-x-auto">
@@ -44,7 +46,8 @@ function MangaCatalog() {
         </div>
         <SortSelect value={sort ?? "followedCount"} onChange={(v) => setSort(v as MangaQuery["sort"])} options={SORTS} />
       </Filters>
-      {q.error && <ErrorBox msg="Impossible de joindre MangaDex pour le moment." />}
+      {tags.error && <ErrorBox msg="Les genres MangaDex sont indisponibles." onRetry={() => void tags.refetch()} />}
+      {q.error && <ErrorBox msg="Impossible de joindre MangaDex pour le moment." onRetry={() => void q.refetch()} />}
       <div className={`mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:gap-5 lg:grid-cols-6 ${q.isFetching ? "opacity-60" : ""} transition-opacity`}>
         {q.isLoading
           ? Array.from({ length: 18 }).map((_, i) => <CardSkeleton key={i} />)
