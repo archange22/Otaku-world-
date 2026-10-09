@@ -46,7 +46,7 @@ function Page({ src, index, eager, retryKey }: { src: string; index: number; eag
   );
 }
 
-function localStorageSafeSaver() {\n  if (typeof window === "undefined") return false;\n  try { return localStorage.getItem("kova:saver") === "1"; } catch { return false; }\n}\n\nfunction Reader() {
+function Reader() {
   const { chapterId } = Route.useParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"eco-plus" | "eco" | "super" | "super-plus">("eco");
@@ -174,13 +174,20 @@ function localStorageSafeSaver() {\n  if (typeof window === "undefined") return 
       </header>
 
       <div className="mx-auto max-w-3xl pt-14">
+        <div className="mx-3 mt-2 flex flex-wrap items-center gap-2 rounded-xl border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
+          <Gauge className="h-4 w-4 text-primary" />
+          <span>{mode === "eco-plus" ? "Une page à la fois, qualité légère" : mode === "eco" ? "Précharge la page suivante" : mode === "super" ? "Précharge 3 pages" : "Téléchargement hors ligne disponible"}</span>
+          <span className="ml-auto inline-flex items-center gap-1"><WifiOff className="h-3.5 w-3.5" /> {savedCount} chap. hors ligne</span>
+          {mode === "super-plus" && <button onClick={() => void downloadAllChapters()} disabled={!!offlineProgress || chapters.isLoading} className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5 font-bold text-primary disabled:opacity-50"><Download className="h-3.5 w-3.5" /> {offlineProgress ? `Téléchargement ${offlineProgress.done}/${offlineProgress.total}` : "Télécharger tous les chapitres"}</button>}
+        </div>
+        {offlineError && <div role="alert" className="mx-3 mt-2 rounded-xl border border-destructive/30 bg-card p-3 text-xs text-muted-foreground">{offlineError}</div>}
         {info.isError && <div role="alert" className="m-4 rounded-2xl border border-destructive/30 bg-card p-6 text-center"><p className="font-semibold">Ce chapitre ne peut pas être ouvert.</p><p className="mt-2 text-sm text-muted-foreground">Il est peut-être indisponible ou bloqué par le filtre de sécurité.</p><button onClick={() => void info.refetch()} className="mt-4 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
         {pages.isLoading && info.data && <div className="flex h-[80vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
         {pages.error && <div role="alert" className="p-8 text-center text-muted-foreground"><p>Impossible de récupérer les planches de ce chapitre.</p><button onClick={() => void pages.refetch()} className="mt-3 rounded-full border px-4 py-2 text-sm font-bold hover:border-primary">Réessayer</button></div>}
         {pages.data?.map((src, i) => <Page key={src} src={src} index={i} eager={i === page || (mode !== "eco-plus" && i <= page + (mode === "eco" ? 1 : 3))} retryKey={retryKey} />)}
         {pages.data && (
           <div className="flex flex-col items-center gap-4 px-4 py-16 text-center">
-            <p className="text-sm text-muted-foreground">Fin du chapitre</p>\n            <button onClick={() => void downloadChapter(chapterId)} disabled={!!offlineProgress} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold hover:border-primary disabled:opacity-50"><Download className="h-4 w-4" /> Télécharger ce chapitre</button>\n            <button onClick={() => void deleteChapterOffline()} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><Trash2 className="h-3.5 w-3.5" /> Supprimer le téléchargement de ce chapitre</button>
+            <p className="text-sm text-muted-foreground">Fin du chapitre</p>\n            <button onClick={() => void downloadChapter(chapterId)} disabled={!!offlineProgress} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold hover:border-primary disabled:opacity-50"><Download className="h-4 w-4" /> Télécharger ce chapitre</button>\n            <button onClick={() => void deleteChapterOffline()} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><Trash2 className="h-3.5 w-3.5" /> Supprimer le téléchargement</button>\n            <button onClick={() => void downloadChapter(chapterId)} disabled={!!offlineProgress} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold hover:border-primary disabled:opacity-50"><Download className="h-4 w-4" /> Télécharger ce chapitre</button>\n            <button onClick={() => void deleteChapterOffline()} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs text-muted-foreground hover:text-foreground"><Trash2 className="h-3.5 w-3.5" /> Supprimer le téléchargement de ce chapitre</button>
             {next ? (
               <button onClick={() => go(next.id)} className="bg-neon shadow-neon rounded-full px-6 py-3 text-sm font-bold text-primary-foreground">Chapitre suivant · {chapterLabel(next)}</button>
             ) : mangaId && <Link to="/manga/$id" params={{ id: mangaId }} className="rounded-full border px-6 py-3 text-sm font-bold">Retour à la fiche</Link>}
