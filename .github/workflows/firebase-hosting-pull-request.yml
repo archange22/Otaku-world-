@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm cache clean --force && npm install --no-audit --no-fund --legacy-peer-deps
       - run: npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
