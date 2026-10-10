@@ -79,6 +79,15 @@ function Home() {
       </section>
 
 
+      <section className="mx-4 mt-6 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card to-background p-5 md:mx-8 md:flex md:items-center md:justify-between md:p-7">
+        <div className="max-w-2xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary"><Sparkles className="h-3.5 w-3.5" /> HUB DE DÉCOUVERTE</span>
+          <h2 className="mt-3 text-xl font-extrabold md:text-2xl">Un titre. Plusieurs catalogues.</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Recherche dans plusieurs sources de métadonnées au même endroit et découvre de nouveaux anime et mangas.</p>
+        </div>
+        <Link to="/catalogue-apis" className="mt-4 inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90 md:mt-0"><Play className="h-4 w-4" /> Explorer le catalogue</Link>
+      </section>
+
       {history.length > 0 && (
         <section className="mt-10 px-4 md:px-8">
           <h2 className="mb-4 text-lg font-bold md:text-2xl">Reprendre la lecture</h2>
