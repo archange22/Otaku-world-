@@ -1,12 +1,12 @@
 /**
  * Otaku-world API Hub
- * Metadata and discovery integrations only. This module does not fetch or embed
- * unauthorized video streams. Existing AniList and MangaDex clients remain the
- * primary integrations; Jikan and Kitsu are additional fallback sources.
+ * Metadata/discovery only. It does not source or embed unauthorized streams.
+ * Existing clients: AniList (src/lib/anilist.ts), MangaDex (src/lib/mangadex.ts).
+ * Additional public metadata providers: Jikan and Kitsu.
  */
 
 export type CatalogKind = "anime" | "manga";
-export type CatalogProvider = "jikan" | "kitsu";
+export type CatalogProvider = "jikan" | "kitsu" | "shikimori";
 
 export type ExternalTitle = {
   id: string;
@@ -46,23 +46,36 @@ type KitsuTitle = {
     averageRating?: string | null;
     startDate?: string | null;
     status?: string | null;
-    subtype?: string | null;
   };
-  relationships?: {
-    genres?: { links?: { related?: string } };
-  };
+};
+
+type ShikimoriTitle = {
+  id: number;
+  name?: string;
+  russian?: string | null;
+  english?: string | null;
+  japanese?: string | null;
+  url?: string;
+  image?: { original?: string; preview?: string };
+  score?: string | number | null;
+  aired_on?: string | null;
+  released_on?: string | null;
+  status?: string | null;
+  description?: string | null;
+  genres?: Array<{ name?: string; russian?: string }>;
 };
 
 const JIKAN = "https://api.jikan.moe/v4";
 const KITSU = "https://kitsu.io/api/edge";
+const SHIKIMORI = "https://shikimori.one/api";
 const TIMEOUT_MS = 9000;
 
-async function getJson<T>(url: string): Promise<T> {
+async function getJson<T>(url: string, headers: Record<string, string> = {}): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetch(url, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...headers },
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`API request failed (${response.status})`);
@@ -82,7 +95,7 @@ function toJikan(item: JikanTitle, kind: CatalogKind): ExternalTitle {
     cover: item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || null,
     url: item.url || null,
     score: typeof item.score === "number" ? item.score : null,
-    year: item.year ?? (item.published?.from ? Number(item.published.from.slice(0, 4)) : null),
+    year: item.year ?? (item.published?.from ? Number(item.published.from.slice(0, 4)) || null : null),
     status: item.status || null,
     genres: (item.genres || []).map((genre) => genre.name),
   };
@@ -90,7 +103,7 @@ function toJikan(item: JikanTitle, kind: CatalogKind): ExternalTitle {
 
 function toKitsu(item: KitsuTitle, kind: CatalogKind): ExternalTitle {
   const a = item.attributes || {};
-  const score = a.averageRating ? Number(a.averageRating) / 10 : NaN;
+  const rating = a.averageRating ? Number(a.averageRating) / 10 : NaN;
   return {
     id: item.id,
     provider: "kitsu",
@@ -99,18 +112,36 @@ function toKitsu(item: KitsuTitle, kind: CatalogKind): ExternalTitle {
     synopsis: a.synopsis || null,
     cover: a.posterImage?.large || a.posterImage?.medium || null,
     url: `https://kitsu.io/${kind === "anime" ? "anime" : "manga"}/${item.id}`,
-    score: Number.isFinite(score) ? Math.round(score * 100) / 100 : null,
+    score: Number.isFinite(rating) ? Math.round(rating * 100) / 100 : null,
     year: a.startDate ? Number(a.startDate.slice(0, 4)) || null : null,
     status: a.status || null,
     genres: [],
   };
 }
 
-function encodeQuery(value: string): string {
-  return new URLSearchParams({ q: value.trim() }).toString();
+function toShikimori(item: ShikimoriTitle, kind: CatalogKind): ExternalTitle {
+  const date = item.aired_on || item.released_on;
+  const score = item.score == null ? NaN : Number(item.score);
+  return {
+    id: String(item.id),
+    provider: "shikimori",
+    kind,
+    title: item.russian || item.name || item.english || item.japanese || "Untitled",
+    synopsis: item.description || null,
+    cover: item.image?.original
+      ? `https://shikimori.one${item.image.original}`
+      : item.image?.preview
+        ? `https://shikimori.one${item.image.preview}`
+        : null,
+    url: item.url ? (item.url.startsWith("http") ? item.url : `https://shikimori.one${item.url}`) : null,
+    score: Number.isFinite(score) ? score : null,
+    year: date ? Number(date.slice(0, 4)) || null : null,
+    status: item.status || null,
+    genres: (item.genres || []).map((genre) => genre.russian || genre.name || "").filter(Boolean),
+  };
 }
 
-/** Search Jikan (MyAnimeList metadata API) for anime or manga. */
+/** Search Jikan, a public MyAnimeList metadata API, for anime or manga. */
 export async function searchJikan(
   kind: CatalogKind,
   query: string,
@@ -118,7 +149,10 @@ export async function searchJikan(
 ): Promise<ExternalTitle[]> {
   if (!query.trim()) return [];
   const endpoint = kind === "anime" ? "anime" : "manga";
-  const params = new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(encodeQuery(query))), limit: String(Math.min(25, Math.max(1, limit))) });
+  const params = new URLSearchParams({
+    q: query.trim(),
+    limit: String(Math.min(25, Math.max(1, limit))),
+  });
   const result = await getJson<{ data?: JikanTitle[] }>(`${JIKAN}/${endpoint}?${params.toString()}`);
   return (result.data || []).map((item) => toJikan(item, kind));
 }
@@ -139,10 +173,26 @@ export async function searchKitsu(
   return (result.data || []).map((item) => toKitsu(item, kind));
 }
 
-/**
- * Query metadata providers in parallel. A provider outage won't break the
- * whole search. Provider + ID are retained so callers can deduplicate safely.
- */
+/** Search Shikimori's public catalogue for anime or manga metadata. */
+export async function searchShikimori(
+  kind: CatalogKind,
+  query: string,
+  limit = 12,
+): Promise<ExternalTitle[]> {
+  if (!query.trim()) return [];
+  const resource = kind === "anime" ? "animes" : "mangas";
+  const params = new URLSearchParams({
+    search: query.trim(),
+    limit: String(Math.min(25, Math.max(1, limit))),
+  });
+  const data = await getJson<ShikimoriTitle[]>(
+    `${SHIKIMORI}/${resource}?${params.toString()}`,
+    { "User-Agent": "Otaku-world/1.0 (catalog metadata integration)" },
+  );
+  return (data || []).map((item) => toShikimori(item, kind));
+}
+
+/** Query metadata providers in parallel. A single provider outage is isolated. */
 export async function searchExternalCatalog(
   kind: CatalogKind,
   query: string,
@@ -151,6 +201,7 @@ export async function searchExternalCatalog(
   const providers: Array<[CatalogProvider, () => Promise<ExternalTitle[]>]> = [
     ["jikan", () => searchJikan(kind, query, limitPerProvider)],
     ["kitsu", () => searchKitsu(kind, query, limitPerProvider)],
+    ["shikimori", () => searchShikimori(kind, query, limitPerProvider)],
   ];
   const settled = await Promise.allSettled(providers.map(([, run]) => run()));
   const results: ExternalTitle[] = [];
@@ -160,8 +211,6 @@ export async function searchExternalCatalog(
     else providerErrors.push(providers[index][0]);
   });
 
-  // Keep similarly named records from separate sources unless they clearly
-  // match; IDs are provider-specific and should never be merged by ID alone.
   const seen = new Set<string>();
   const unique = results.filter((item) => {
     const key = `${item.provider}:${item.id}`;
