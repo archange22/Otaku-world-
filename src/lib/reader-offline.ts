@@ -42,6 +42,7 @@ export async function saveChapterOffline(
   id: string,
   urls: string[],
   onProgress?: (done: number, total: number) => void,
+  meta?: SavedChapter["meta"],
 ): Promise<void> {
   if (!urls.length) throw new Error("Aucune page disponible à télécharger.");
   const existing = await getSavedChapter(id);
