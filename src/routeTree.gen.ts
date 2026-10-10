@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as LibraryRouteImport } from './routes/library'\nimport { Route as ProfileRouteImport } from './routes/profile'\nimport { Route as SettingsRouteImport } from './routes/settings'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnimeIndexRouteImport } from './routes/anime.index'
 import { Route as AnimeIdRouteImport } from './routes/anime.$id'
 import { Route as MangaIndexRouteImport } from './routes/manga.index'
@@ -34,7 +36,17 @@ const LibraryRoute = LibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProfileRoute = ProfileRouteImport.update({\n  id: '/profile',\n  path: '/profile',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst SettingsRoute = SettingsRouteImport.update({\n  id: '/settings',\n  path: '/settings',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst AnimeIndexRoute = AnimeIndexRouteImport.update({
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnimeIndexRoute = AnimeIndexRouteImport.update({
   id: '/anime/',
   path: '/anime/',
   getParentRoute: () => rootRouteImport,
