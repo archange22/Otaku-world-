@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Heart, Star, Play, ExternalLink } from "lucide-react";
-import { getAnime, animeTitle, cleanText } from "@/lib/anilist";
+import { getAnime, searchAnime, animeTitle, cleanText } from "@/lib/anilist";
+import { Rail, type CardData } from "@/components/kova";
 import { lib, useLibrary } from "@/lib/library";
 import { ErrorBox } from "@/components/kova";
 
@@ -23,12 +24,36 @@ const STATUS: Record<string, string> = { FINISHED: "Terminé", RELEASING: "En co
 function AnimeDetail() {
   const { id } = Route.useParams();
   const { data: a, isLoading, error } = useQuery({ queryKey: ["anime-detail", id], queryFn: () => getAnime(Number(id)) });
+  const related = useQuery({
+    queryKey: ["anime-related", id, a?.genres?.[0]],
+    queryFn: () => searchAnime({ genre: a?.genres?.[0], sort: "SCORE_DESC", perPage: 10 }),
+    enabled: Boolean(a?.genres?.[0]),
+  });
   const { favs } = useLibrary();
-  const [provider, setProvider] = useState<"animesama" | "franime">("animesama");
+  type Provider = "kova" | "sendvid" | "uqload" | "vidmoly" | "animesama" | "franime";
+  const [provider, setProvider] = useState<Provider>("kova");
+  const [customPlayerUrls, setCustomPlayerUrls] = useState<Record<string, string>>({});
+  const playerNames: Record<Provider, string> = {
+    kova: "KOVA", sendvid: "Sendvid", uqload: "Uqload",
+    vidmoly: "Vidmoly", animesama: "Anime-Sama", franime: "FRAnime",
+  };
+  const playerUrl = provider === "kova"
+    ? "https://ansembed.net/embed-h3gamyyzs0g9.html"
+    : provider === "animesama" ? "https://animes-sama.fr/"
+    : provider === "franime" ? "https://franime.fr/"
+    : customPlayerUrls[provider]?.trim() ?? "";
+  const isDirectPlayer = provider === "kova" || provider === "animesama" || provider === "franime";
   if (error) return <ErrorBox msg="Anime introuvable." />;
   if (isLoading || !a) return <div className="h-[50vh] animate-pulse bg-muted" />;
   const title = animeTitle(a);
   const isFav = favs.some((f) => f.kind === "anime" && f.id === id);
+  const relatedCards: CardData[] = (related.data ?? [])
+    .filter((item) => String(item.id) !== id)
+    .slice(0, 8)
+    .map((item) => ({
+      id: String(item.id), title: animeTitle(item), cover: item.coverImage.large,
+      score: item.averageScore, sub: [item.format, item.seasonYear].filter(Boolean).join(" · "), kind: "anime",
+    }));
   const meta = [
     ["Statut", a.status ? STATUS[a.status] ?? a.status : "—"],
     ["Format", a.format ?? "—"],
@@ -70,29 +95,39 @@ function AnimeDetail() {
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"><Play className="h-5 w-5" /></span>
                 <div>
-                  <h2 className="text-lg font-bold">Regarder sur KOVA</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Choisis un service. KOVA essaiera d’afficher son site ici. Certains services interdisent l’intégration : dans ce cas, utilise le bouton pour l’ouvrir dans un nouvel onglet.</p>
+                  <h2 className="text-lg font-bold">Lecteurs KOVA</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Choisis le lecteur. KOVA est préconfiguré avec la source fournie. Pour Sendvid, Uqload et Vidmoly, colle l’URL d’intégration de la vidéo ou de l’épisode que tu as le droit de diffuser.</p>
                 </div>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => setProvider("animesama")} aria-pressed={provider === "animesama"} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${provider === "animesama" ? "bg-primary text-primary-foreground" : "border hover:border-primary"}`}>Anime-Sama</button>
-                <button type="button" onClick={() => setProvider("franime")} aria-pressed={provider === "franime"} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${provider === "franime" ? "bg-primary text-primary-foreground" : "border hover:border-primary"}`}>FRAnime</button>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {(["kova", "sendvid", "uqload", "vidmoly", "animesama", "franime"] as Provider[]).map((p) => (
+                  <button key={p} type="button" onClick={() => setProvider(p)} aria-pressed={provider === p} className={`inline-flex min-h-12 items-center justify-center rounded-xl px-3 py-3 text-sm font-bold transition ${provider === p ? "bg-primary text-primary-foreground" : "border hover:border-primary"}`}>
+                    {playerNames[p]}
+                  </button>
+                ))}
               </div>
+              {!isDirectPlayer && (
+                <div className="mt-4">
+                  <label htmlFor="custom-player-url" className="mb-2 block text-sm font-semibold">URL d’intégration · {playerNames[provider]}</label>
+                  <input id="custom-player-url" type="url" inputMode="url" placeholder="https://…/embed/…" value={customPlayerUrls[provider] ?? ""} onChange={(e) => setCustomPlayerUrls((old) => ({ ...old, [provider]: e.target.value }))} className="w-full rounded-xl border bg-background px-3 py-3 text-sm outline-none focus:border-primary" />
+                  <p className="mt-2 text-xs text-muted-foreground">L’URL est utilisée uniquement dans cette page. Elle n’est pas enregistrée dans ton compte ni partagée avec KOVA.</p>
+                </div>
+              )}
               <div className="mt-4 overflow-hidden rounded-xl border bg-background">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
-                  <span className="text-sm font-semibold">{provider === "animesama" ? "Anime-Sama" : "FRAnime"} · lecteur externe</span>
-                  <a href={provider === "animesama" ? `https://www.google.com/search?q=${encodeURIComponent(`${title} site:animes-sama.fr`)}` : `https://www.google.com/search?q=${encodeURIComponent(`${title} site:franime.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:border-primary">Rechercher « {title} » <ExternalLink className="h-4 w-4" /></a>
+                  <span className="text-sm font-semibold">{playerNames[provider]} · lecteur</span>
+                  {playerUrl && <a href={playerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:border-primary">Ouvrir séparément <ExternalLink className="h-4 w-4" /></a>}
                 </div>
-                <iframe
-                  key={provider}
-                  src={provider === "animesama" ? "https://animes-sama.fr/" : "https://franime.fr/"}
-                  title={provider === "animesama" ? "Anime-Sama intégré à KOVA" : "FRAnime intégré à KOVA"}
-                  className="h-[65vh] min-h-[420px] w-full bg-background"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  allow="fullscreen; encrypted-media; picture-in-picture"
-                />
-                <p className="border-t p-3 text-xs text-muted-foreground">Si la zone reste vide ou affiche une erreur, le service bloque probablement l’intégration. Ouvre-le avec le bouton de recherche ci-dessus. KOVA ne récupère ni ne diffuse les vidéos lui-même.</p>
+                {playerUrl ? (
+                  <iframe key={provider + playerUrl} src={playerUrl} title={playerNames[provider] + " intégré à KOVA"} className="h-[65vh] min-h-[420px] w-full bg-background" loading="lazy" referrerPolicy="no-referrer" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen />
+                ) : (
+                  <div className="flex min-h-56 flex-col items-center justify-center gap-2 p-6 text-center">
+                    <Play className="h-8 w-8 text-muted-foreground" />
+                    <p className="font-semibold">Ajoute l’URL du lecteur {playerNames[provider]}</p>
+                    <p className="max-w-md text-sm text-muted-foreground">Il faut l’adresse d’intégration propre à la vidéo ou à l’épisode. KOVA ne peut pas deviner cette adresse à partir du seul nom du service.</p>
+                  </div>
+                )}
+                <p className="border-t p-3 text-xs text-muted-foreground">Certains sites interdisent l’affichage intégré. Si le lecteur reste vide ou affiche une erreur, ouvre-le séparément. KOVA ne contourne pas les restrictions du service.</p>
               </div>
             </section>
             {a.trailer?.site === "youtube" && (

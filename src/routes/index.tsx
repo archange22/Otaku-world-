@@ -25,6 +25,8 @@ export const m2c = (m: Manga): CardData => ({ id: m.id, title: m.title, cover: m
 function Home() {
   const trending = useQuery({ queryKey: ["home-trending"], queryFn: () => searchAnime({ sort: "TRENDING_DESC", perPage: 16 }) });
   const airing = useQuery({ queryKey: ["home-airing"], queryFn: () => searchAnime({ sort: "POPULARITY_DESC", status: "RELEASING", perPage: 16 }) });
+  const topRated = useQuery({ queryKey: ["home-top-rated"], queryFn: () => searchAnime({ sort: "SCORE_DESC", perPage: 16 }) });
+  const animeMovies = useQuery({ queryKey: ["home-anime-movies"], queryFn: () => searchAnime({ format: "MOVIE", sort: "POPULARITY_DESC", perPage: 16 }) });
   const popManga = useQuery({ queryKey: ["home-manga"], queryFn: () => searchManga({ limit: 16 }) });
   const manhwa = useQuery({ queryKey: ["home-manhwa"], queryFn: () => searchManga({ kind: "Manhwa", limit: 16 }) });
   const latest = useQuery({ queryKey: ["home-latest"], queryFn: () => searchManga({ sort: "latestUploadedChapter", limit: 16 }) });
@@ -100,7 +102,23 @@ function Home() {
         </section>
       )}
 
+      <section className="mx-4 mt-8 grid grid-cols-2 gap-3 md:mx-8 md:grid-cols-4">
+        {[
+          { title: "Action & aventure", detail: "Combats et grandes quêtes", genre: "Action" },
+          { title: "Fantasy", detail: "Mondes extraordinaires", genre: "Fantasy" },
+          { title: "Comédie", detail: "Pour se détendre", genre: "Comedy" },
+          { title: "Science-fiction", detail: "Futur et mystères", genre: "Sci-Fi" },
+        ].map((item) => (
+          <Link key={item.genre} to="/anime" className="group rounded-2xl border bg-card p-4 transition hover:-translate-y-0.5 hover:border-primary">
+            <p className="text-sm font-bold transition group-hover:text-primary">{item.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+          </Link>
+        ))}
+      </section>
+
       <Rail title="Tendances anime" items={trending.data?.map(a2c)} loading={trending.isLoading} action={<Link to="/anime" className="text-sm font-semibold text-primary">Tout voir</Link>} />
+      <Rail title="Les mieux notés" items={topRated.data?.map(a2c)} loading={topRated.isLoading} action={<Link to="/anime" className="text-sm font-semibold text-primary">Explorer</Link>} />
+      <Rail title="Films d’animation" items={animeMovies.data?.map(a2c)} loading={animeMovies.isLoading} action={<Link to="/anime" className="text-sm font-semibold text-primary">Explorer</Link>} />
       <Rail title="En cours de diffusion" items={airing.data?.map(a2c)} loading={airing.isLoading} />
       <Rail title="Mangas populaires" items={popManga.data?.map(m2c)} loading={popManga.isLoading} action={<Link to="/manga" className="text-sm font-semibold text-primary">Tout voir</Link>} />
       <Rail title="Manhwas du moment" items={manhwa.data?.map(m2c)} loading={manhwa.isLoading} />
