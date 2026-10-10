@@ -116,7 +116,9 @@ const NAV = [
   { to: "/settings", label: "Réglages", icon: Settings },
 ] as const;
 
-const MOBILE_NAV = NAV.slice(0, 4);\n\nfunction RootComponent() {
+const MOBILE_NAV = NAV.slice(0, 4);
+
+function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const reader = path.startsWith("/read/");
