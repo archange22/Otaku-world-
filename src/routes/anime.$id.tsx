@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Heart, Star, Play, ExternalLink } from "lucide-react";
-import { getAnime, animeTitle, cleanText } from "@/lib/anilist";
+import { getAnime, searchAnime, animeTitle, cleanText } from "@/lib/anilist";
+import { Rail, type CardData } from "@/components/kova";
 import { lib, useLibrary } from "@/lib/library";
 import { ErrorBox } from "@/components/kova";
 
@@ -23,6 +24,11 @@ const STATUS: Record<string, string> = { FINISHED: "Terminé", RELEASING: "En co
 function AnimeDetail() {
   const { id } = Route.useParams();
   const { data: a, isLoading, error } = useQuery({ queryKey: ["anime-detail", id], queryFn: () => getAnime(Number(id)) });
+  const related = useQuery({
+    queryKey: ["anime-related", id, a?.genres?.[0]],
+    queryFn: () => searchAnime({ genre: a?.genres?.[0], sort: "SCORE_DESC", perPage: 10 }),
+    enabled: Boolean(a?.genres?.[0]),
+  });
   const { favs } = useLibrary();
   type Provider = "kova" | "sendvid" | "uqload" | "vidmoly" | "animesama" | "franime";
   const [provider, setProvider] = useState<Provider>("kova");
@@ -41,6 +47,13 @@ function AnimeDetail() {
   if (isLoading || !a) return <div className="h-[50vh] animate-pulse bg-muted" />;
   const title = animeTitle(a);
   const isFav = favs.some((f) => f.kind === "anime" && f.id === id);
+  const relatedCards: CardData[] = (related.data ?? [])
+    .filter((item) => String(item.id) !== id)
+    .slice(0, 8)
+    .map((item) => ({
+      id: String(item.id), title: animeTitle(item), cover: item.coverImage.large,
+      score: item.averageScore, sub: [item.format, item.seasonYear].filter(Boolean).join(" · "), kind: "anime",
+    }));
   const meta = [
     ["Statut", a.status ? STATUS[a.status] ?? a.status : "—"],
     ["Format", a.format ?? "—"],
