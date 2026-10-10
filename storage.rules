@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /user-uploads/{userId}/{fileName} {
+      function ownsFile() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow read: if ownsFile();
+      allow create, update: if ownsFile()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if ownsFile();
+    }
+  }
+}

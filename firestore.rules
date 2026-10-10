@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owns(userId) { return signedIn() && request.auth.uid == userId; }
+    function owner() { return signedIn() && request.auth.uid == "CpFFEsdBHoYpWdQHHex8NEZOhno2"; }
+    function rolesUnchanged() {
+      return request.resource.data.get('role', null) == resource.data.get('role', null)
+        && request.resource.data.get('admin', null) == resource.data.get('admin', null)
+        && request.resource.data.get('owner', null) == resource.data.get('owner', null)
+        && request.resource.data.get('isOwner', null) == resource.data.get('isOwner', null);
+    }
+
+    match /users/{userId} {
+      allow read: if owns(userId) || owner();
+      allow create: if owns(userId)
+        && !request.resource.data.keys().hasAny(['role', 'admin', 'owner', 'isOwner']);
+      allow update: if owner() || (owns(userId) && rolesUnchanged());
+      allow delete: if owner();
+
+      match /library/{documentId} {
+        allow read, write: if owner() || (owns(userId) && documentId == 'data');
+      }
+    }
+
+    match /userSettings/{userId} {
+      allow read, create, update, delete: if owns(userId) || owner();
+    }
+
+    // Keep other collections closed until they receive explicit, tested rules.
+    match /{document=**} {
+      allow read, write: if owner();
+    }
+  }
+}
