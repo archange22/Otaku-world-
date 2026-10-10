@@ -69,12 +69,12 @@ function AnimeDetail() {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"><Play className="h-5 w-5" /></span>
                 <div>
                   <h2 className="text-lg font-bold">Regarder cet anime</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Choisis un service externe. KOVA ne lit pas les épisodes directement et ne transmet pas automatiquement le titre recherché.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">La fiche complète reste sur KOVA. Choisis où rechercher « {title} ». La lecture des épisodes se fait sur le service externe, pas sur KOVA.</p>
                 </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <a href="https://franime.fr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">Ouvrir FRAnime <ExternalLink className="h-4 w-4" /></a>
-                <a href="https://animes-sama.fr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition hover:border-primary">Ouvrir Anime-Sama <ExternalLink className="h-4 w-4" /></a>
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(`${title} site:franime.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">Rechercher sur FRAnime <ExternalLink className="h-4 w-4" /></a>
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(`${title} site:animes-sama.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition hover:border-primary">Rechercher sur Anime-Sama <ExternalLink className="h-4 w-4" /></a>
               </div>
             </section>
             {a.trailer?.site === "youtube" && (
