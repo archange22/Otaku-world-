@@ -10,7 +10,7 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Home, Tv, BookOpen, Library, User as UserIcon } from "lucide-react";
+import { Home, Tv, BookOpen, Library, User as UserIcon, ShieldCheck } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -112,6 +112,7 @@ const NAV = [
   { to: "/anime", label: "Anime", icon: Tv },
   { to: "/manga", label: "Manga", icon: BookOpen },
   { to: "/library", label: "Biblio", icon: Library },
+  { to: "/age-verification", label: "Protection", icon: ShieldCheck },
 ] as const;
 
 function RootComponent() {
@@ -152,7 +153,7 @@ function RootComponent() {
       </main>
       {!reader && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
-          <div className="grid grid-cols-4">
+          <div className="grid grid-cols-5">
             {NAV.map((n) => (
               <Link
                 key={n.to}
