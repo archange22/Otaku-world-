@@ -23,8 +23,13 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ query, variables }),
   });
+  if (!res.ok) {
+    if (res.status === 429) throw new Error("AniList rate limit reached");
+    throw new Error(`AniList request failed (${res.status})`);
+  }
   const json = await res.json();
-  if (json.errors) throw new Error(json.errors[0]?.message ?? "AniList error");
+  if (json.errors?.length) throw new Error(json.errors[0]?.message ?? "AniList error");
+  if (!json.data) throw new Error("AniList returned no data");
   return json.data;
 }
 
@@ -42,8 +47,8 @@ export async function searchAnime(q: AnimeQuery): Promise<Anime[]> {
   const query = `query($page:Int,$perPage:Int,$search:String,$format:MediaFormat,$genre:String,$sort:[MediaSort],$status:MediaStatus){
     Page(page:$page,perPage:$perPage){ media(type:ANIME,isAdult:false,search:$search,format:$format,genre:$genre,sort:$sort,status:$status){ ${FIELDS} } } }`;
   const d = await gql<{ Page: { media: Anime[] } }>(query, {
-    page: q.page ?? 1,
-    perPage: q.perPage ?? 24,
+    page: Math.max(1, Math.floor(q.page ?? 1)),
+    perPage: Math.min(50, Math.max(1, Math.floor(q.perPage ?? 24))),
     search: q.search || undefined,
     format: q.format || undefined,
     genre: q.genre || undefined,
@@ -59,7 +64,7 @@ export async function getAnime(id: number): Promise<Anime> {
   return d.Media;
 }
 
-export const ANIME_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
+export const ANIME_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
 
 export const cleanText = (s: string | null) => (s ?? "").replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
 export const animeTitle = (a: Anime) => a.title.english || a.title.romaji;
