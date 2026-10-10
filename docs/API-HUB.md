@@ -1,48 +1,33 @@
 # Otaku-world API Hub
 
-## API intégrées / prévues
+## API présentes dans le dépôt
+- **AniList GraphQL** (src/lib/anilist.ts): recherche et métadonnées anime.
+- **MangaDex API** (src/lib/mangadex.ts): métadonnées manga/manhwa/manhua et chapitres disponibles via l'API.
+- **Jikan API v4**: métadonnées publiques issues de MyAnimeList.
+- **Kitsu API**: fiches anime et manga via JSON:API.
+- **Shikimori API**: fiches anime et manga.
+- **Firebase Authentication / Hosting**: comptes et hébergement.
 
-### Actuellement présentes dans le dépôt
-- **AniList GraphQL**: recherche, fiches anime, genres, studios, bandes-annonces et métadonnées. Client: `src/lib/anilist.ts`.
-- **MangaDex API**: catalogue manga/manhwa/manhua, couvertures, chapitres et pages disponibles via l'API. Client: `src/lib/mangadex.ts`.
-- **Firebase Authentication**: comptes et connexion.
-- **Firebase Hosting**: hébergement et déploiement du site.
+## Recherche multi-source
+La fonction searchExternalCatalog(kind, query) interroge Jikan, Kitsu et Shikimori en parallèle. Elle normalise les résultats et isole les erreurs d'un fournisseur.
+Le nouvel écran src/routes/catalogue-apis.index.tsx combine la recherche native AniList/MangaDex avec ces trois sources externes, indique la source des fiches et retire les doublons évidents par titre normalisé.
 
-### Ajouts de cette branche
-- **Jikan API v4**: source publique de métadonnées anime et manga provenant de MyAnimeList. Pas de clé API requise pour les recherches publiques, avec limitation de débit.
-- **Kitsu API**: recherche publique de fiches anime et manga en JSON:API.
-- **API Hub**: recherches Jikan + Kitsu en parallèle, résultats normalisés, erreurs isolées par fournisseur et identification de la source.
+URL de l'écran : /catalogue-apis.
 
-Client ajouté: `src/lib/catalog-api-hub.ts`.
+## Classification et sécurité
+- Le filtre Ecchi +16 n'affiche que les fiches dont les métadonnées déclarent un genre ecchi. Les données de genre sont incomplètes selon les fournisseurs, donc cette classification n'est pas garantie exhaustive.
+- Le filtre Hentai +18 affiche un écran verrouillé et ne lance pas de recherche ni de chargement de fiches adultes dans cette interface. Une simple étiquette n'est pas une vérification d'âge fiable. Toute éventuelle fonctionnalité adulte devrait nécessiter une validation d'âge robuste côté serveur et être conforme à la loi et aux règles de la plateforme.
+- Les classifications fournies par les API peuvent être inexactes ou absentes. Prévoir une modération et une classification éditoriale avant d'exposer des contenus.
+- Les clés privées ne doivent jamais être exposées dans le frontend ou commitées dans Git.
 
-Exemple:
-```ts
-import { searchExternalCatalog } from "@/lib/catalog-api-hub";
-
-const { results, providerErrors } = await searchExternalCatalog("anime", "Frieren");
-```
-
-## Autres intégrations possibles, à activer seulement si nécessaires
+## Autres intégrations à évaluer
 - **AniDB**: métadonnées avancées, conditions d'accès à vérifier.
-- **TheTVDB**: données TV, clé/compte selon l'offre.
-- **TMDB**: fiches, images et informations de films/séries, clé API nécessaire et règles d'attribution.
-- **Google Books / Open Library**: livres et éditions pour un futur catalogue de light novels.
-- **YouTube Data API**: recherche de bandes-annonces officielles, clé et quotas.
-- **Firebase Cloud Functions**: logique serveur pour XP, rôles et opérations privilégiées.
-- **Firebase Realtime Database / Firestore**: profils, favoris, historique, commentaires et listes, selon le modèle de données retenu.
-- **Firebase App Check**: protection contre les requêtes abusives.
-- **Sentry**: remontée d'erreurs, nécessite un DSN et une configuration.
-- **Cloudinary**: gestion d'images téléversées, si le stockage actuel ne suffit pas.
+- **MyAnimeList API officielle**: accès OAuth/client ID et limites à vérifier; Jikan n'est pas l'API officielle.
+- **TMDB / TheTVDB**: adaptations, films et séries; clés et attribution possibles.
+- **YouTube Data API**: bandes-annonces officielles, clé et quotas.
+- **Google Books / Open Library**: light novels et éditions.
+- **Firestore / Cloud Functions / App Check**: données utilisateur, logique serveur et protection anti-abus.
+- **Sentry / Cloudinary**: suivi d'erreurs et médias téléversés, selon les besoins.
 
-## Règles d'intégration
-1. Ne jamais exposer une clé privée dans le frontend ou dans Git. Utiliser des secrets et, si nécessaire, un proxy serveur.
-2. Vérifier les quotas, licences, attribution, CORS et conditions d'utilisation de chaque fournisseur.
-3. Les API de métadonnées ne donnent pas automatiquement le droit de diffuser un épisode ou un scan. Otaku-world doit utiliser uniquement des lecteurs et contenus que l'on est autorisé à intégrer.
-4. Un fournisseur qui échoue ne doit pas rendre tout le catalogue indisponible.
-5. Dédupliquer uniquement avec une correspondance vérifiée (titre normalisé + année/type), pas avec les identifiants de fournisseurs différents.
-6. Ajouter des tests et un contrôle de build avant de fusionner cette branche.
-
-## Limites connues
-- Cette branche ajoute les clients et la documentation, mais ne remplace pas encore les écrans du catalogue par une recherche multi-source.
-- Les genres Kitsu ne sont pas chargés dans cette première version.
-- Les intégrations avec clé, les fonctions Firebase et les services de diffusion légale demandent une configuration distincte.
+## Limites et vérifications nécessaires
+Les API de métadonnées ne confèrent pas de droits de diffusion pour les épisodes ou scans. Les API publiques peuvent imposer quotas, attribution, restrictions CORS ou conditions d'utilisation. Les résultats multi-sources, l'API Shikimori et la génération de routes doivent encore passer le build, le lint et des tests réels avant fusion. Cette modification n'a pas été déployée.
