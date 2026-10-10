@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, ShieldAlert, Sparkles } from "lucide-react";
+import { ShieldAlert, Sparkles } from "lucide-react";
 import { searchExternalCatalog, type CatalogKind, type ExternalTitle } from "@/lib/catalog-api-hub";
 import { searchAnime, animeTitle } from "@/lib/anilist";
 import { searchManga } from "@/lib/mangadex";
@@ -99,10 +99,12 @@ function MultiApiCatalog() {
   const visible = merged.filter((item) => {
     const genreText = item.genres.join(" ").toLowerCase();
     const isEcchi = genreText.includes("ecchi");
-    // The +18 shelf is intentionally not queried or rendered here.
-    if (rating === "16") return isEcchi;
+    const adultTerms = ["hentai", "adult", "erotica", "explicit", "pornographic", "18+"];
+    const isAdultOrExplicit = adultTerms.some((term) => genreText.includes(term));
+    // Hide adult-labelled titles by default; keep Ecchi in its dedicated +16 filter.
+    if (rating === "16") return isEcchi && !isAdultOrExplicit;
     if (rating === "18") return false;
-    return true;
+    return !isAdultOrExplicit && !isEcchi;
   });
 
   const busy = external.isFetching || localAnime.isFetching || localManga.isFetching;
