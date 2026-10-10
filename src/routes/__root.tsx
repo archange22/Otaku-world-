@@ -9,8 +9,8 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { Home, Tv, BookOpen, Library, User as UserIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Home, Tv, BookOpen, Library, User as UserIcon, Menu, X, Settings } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -112,12 +112,15 @@ const NAV = [
   { to: "/anime", label: "Anime", icon: Tv },
   { to: "/manga", label: "Manga", icon: BookOpen },
   { to: "/library", label: "Biblio", icon: Library },
+  { to: "/profile", label: "Profil", icon: UserIcon },
+  { to: "/settings", label: "Réglages", icon: Settings },
 ] as const;
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const reader = path.startsWith("/read/");
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <QueryClientProvider client={queryClient}>
       {!reader && (
