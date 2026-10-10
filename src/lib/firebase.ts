@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCNxE8ucIaSavCgP8IZgdmNGFn8mQQit-c",
@@ -18,6 +19,7 @@ function firebaseApp() {
 }
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
 /** Browser-only: call from effects / event handlers, never during SSR. */
 export function firebaseAuth(): Auth {
@@ -29,4 +31,10 @@ export function firebaseAuth(): Auth {
 export function firebaseDb(): Firestore {
   if (!_db) _db = getFirestore(firebaseApp());
   return _db;
+}
+
+/** Firebase Storage for user-uploaded profile images. */
+export function firebaseStorage(): FirebaseStorage {
+  if (!_storage) _storage = getStorage(firebaseApp());
+  return _storage;
 }
