@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Heart, Star } from "lucide-react";
+import { Heart, Star, Play, ExternalLink } from "lucide-react";
 import { getAnime, animeTitle, cleanText } from "@/lib/anilist";
 import { lib, useLibrary } from "@/lib/library";
 import { ErrorBox } from "@/components/kova";
@@ -64,6 +64,19 @@ function AnimeDetail() {
           <div>
             <h2 className="mb-3 text-lg font-bold">Synopsis</h2>
             <p className="whitespace-pre-line leading-relaxed text-muted-foreground">{cleanText(a.description) || "Pas de synopsis disponible."}</p>
+            <section className="mt-8 rounded-2xl border bg-card p-5 md:p-6">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"><Play className="h-5 w-5" /></span>
+                <div>
+                  <h2 className="text-lg font-bold">Regarder cet anime</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Choisis un service externe. KOVA ne lit pas les épisodes directement et ne transmet pas automatiquement le titre recherché.</p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <a href="https://franime.fr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">Ouvrir FRAnime <ExternalLink className="h-4 w-4" /></a>
+                <a href="https://animes-sama.fr/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition hover:border-primary">Ouvrir Anime-Sama <ExternalLink className="h-4 w-4" /></a>
+              </div>
+            </section>
             {a.trailer?.site === "youtube" && (
               <>
                 <h2 className="mb-3 mt-8 text-lg font-bold">Bande-annonce</h2>
