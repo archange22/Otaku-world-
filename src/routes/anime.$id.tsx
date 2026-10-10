@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Heart, Star, Play, ExternalLink } from "lucide-react";
 import { getAnime, animeTitle, cleanText } from "@/lib/anilist";
 import { lib, useLibrary } from "@/lib/library";
@@ -23,6 +24,7 @@ function AnimeDetail() {
   const { id } = Route.useParams();
   const { data: a, isLoading, error } = useQuery({ queryKey: ["anime-detail", id], queryFn: () => getAnime(Number(id)) });
   const { favs } = useLibrary();
+  const [provider, setProvider] = useState<"animesama" | "franime">("animesama");
   if (error) return <ErrorBox msg="Anime introuvable." />;
   if (isLoading || !a) return <div className="h-[50vh] animate-pulse bg-muted" />;
   const title = animeTitle(a);
@@ -68,13 +70,29 @@ function AnimeDetail() {
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"><Play className="h-5 w-5" /></span>
                 <div>
-                  <h2 className="text-lg font-bold">Regarder cet anime</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">La fiche complète reste sur KOVA. Choisis où rechercher « {title} ». La lecture des épisodes se fait sur le service externe, pas sur KOVA.</p>
+                  <h2 className="text-lg font-bold">Regarder sur KOVA</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Choisis un service. KOVA essaiera d’afficher son site ici. Certains services interdisent l’intégration : dans ce cas, utilise le bouton pour l’ouvrir dans un nouvel onglet.</p>
                 </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <a href={`https://www.google.com/search?q=${encodeURIComponent(`${title} site:franime.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">Rechercher sur FRAnime <ExternalLink className="h-4 w-4" /></a>
-                <a href={`https://www.google.com/search?q=${encodeURIComponent(`${title} site:animes-sama.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition hover:border-primary">Rechercher sur Anime-Sama <ExternalLink className="h-4 w-4" /></a>
+                <button type="button" onClick={() => setProvider("animesama")} aria-pressed={provider === "animesama"} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${provider === "animesama" ? "bg-primary text-primary-foreground" : "border hover:border-primary"}`}>Anime-Sama</button>
+                <button type="button" onClick={() => setProvider("franime")} aria-pressed={provider === "franime"} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${provider === "franime" ? "bg-primary text-primary-foreground" : "border hover:border-primary"}`}>FRAnime</button>
+              </div>
+              <div className="mt-4 overflow-hidden rounded-xl border bg-background">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
+                  <span className="text-sm font-semibold">{provider === "animesama" ? "Anime-Sama" : "FRAnime"} · lecteur externe</span>
+                  <a href={provider === "animesama" ? `https://www.google.com/search?q=${encodeURIComponent(`${title} site:animes-sama.fr`)}` : `https://www.google.com/search?q=${encodeURIComponent(`${title} site:franime.fr`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:border-primary">Rechercher « {title} » <ExternalLink className="h-4 w-4" /></a>
+                </div>
+                <iframe
+                  key={provider}
+                  src={provider === "animesama" ? "https://animes-sama.fr/" : "https://franime.fr/"}
+                  title={provider === "animesama" ? "Anime-Sama intégré à KOVA" : "FRAnime intégré à KOVA"}
+                  className="h-[65vh] min-h-[420px] w-full bg-background"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  allow="fullscreen; encrypted-media; picture-in-picture"
+                />
+                <p className="border-t p-3 text-xs text-muted-foreground">Si la zone reste vide ou affiche une erreur, le service bloque probablement l’intégration. Ouvre-le avec le bouton de recherche ci-dessus. KOVA ne récupère ni ne diffuse les vidéos lui-même.</p>
               </div>
             </section>
             {a.trailer?.site === "youtube" && (
