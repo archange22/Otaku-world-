@@ -1,4 +1,4 @@
-import { getPrefs, adultAllowed, isHidden, isOwnerSession } from "./prefs";
+import { getPrefs, isHidden } from "./prefs";
 
 type Rel = { id: string; type: string; attributes?: any };
 type RawManga = { id: string; attributes: any; relationships: Rel[] };
@@ -88,25 +88,19 @@ const ADULT = ["erotica", "pornographic"];
 
 // Keep sexualized genres out of the public catalog, including misrated entries.
 const hasSensitiveGenre = (tags: string[]) => tags.some((tag) => /hentai|ecchi/i.test(tag));
-const ratings = () => {
-  const p = getPrefs();
-  // Owner contourne le mode enfant pour les contenus non sexuels, jamais les classifications sexuelles 18+.
-  if (isOwnerSession()) return SAFE;
-  if (adultAllowed(p)) return [...SAFE, ...ADULT];
-  return p.kidMode ? ["safe"] : SAFE;
-};
+const ratings = () => SAFE;
 const LANG_BY_KIND: Record<string, string[]> = { Manga: ["ja"], Manhwa: ["ko"], Manhua: ["zh", "zh-hk"] };
 
 export type MangaQuery = { search?: string; kind?: string; tag?: string; sort?: "followedCount" | "rating" | "latestUploadedChapter" | undefined; limit?: number; adult?: "only" };
 
 export async function searchManga(q: MangaQuery): Promise<Manga[]> {
-  if (q.adult === "only" && !adultAllowed()) return [];
+  if (q.adult === "only") return [];
   const sort = q.sort ?? (q.search ? undefined : "followedCount");
   const d = await md<{ data: RawManga[] }>("manga", {
     limit: q.limit ?? 24,
     title: q.search,
     "includes": ["cover_art"],
-    contentRating: q.adult === "only" ? ADULT : ratings(),
+    contentRating: ratings(),
     availableTranslatedLanguage: ["fr", "en"],
     hasAvailableChapters: "true",
     originalLanguage: q.kind ? LANG_BY_KIND[q.kind] : undefined,
@@ -130,7 +124,9 @@ export async function getManga(id: string) {
     md<{ statistics: Record<string, { rating: { bayesian: number | null }; follows: number }> }>("statistics/manga", { manga: [id] }).catch(() => null),
   ]);
   const s = stats?.statistics[id];
-  return { ...mapManga(d.data), score: s?.rating.bayesian ?? null, follows: s?.follows ?? null };
+  const manga = mapManga(d.data);
+  if (manga.adult || hasSensitiveGenre(manga.tags)) throw new Error("Ce contenu n'est pas disponible.");
+  return { ...manga, score: s?.rating.bayesian ?? null, follows: s?.follows ?? null };
 }
 
 export async function getChapters(mangaId: string): Promise<Chapter[]> {
@@ -171,7 +167,7 @@ export async function getChapterInfo(id: string) {
   const mangaId = mangaRel?.id as string | undefined;
   if (!mangaId) throw new Error("Manga introuvable.");
   const manga = await md<{ data: RawManga }>(`manga/${mangaId}`, { includes: ["cover_art"] });
-  if (mapManga(manga.data).adult && !adultAllowed()) {
+  if (mapManga(manga.data).adult || hasSensitiveGenre(mapManga(manga.data).tags)) {
     throw new Error("Ce contenu n'est pas disponible.");
   }
   return {
@@ -183,6 +179,7 @@ export async function getChapterInfo(id: string) {
 }
 
 export async function getPages(id: string, saver: boolean): Promise<string[]> {
+  await getChapterInfo(id);
   const d = await md<{ baseUrl: string; chapter: { hash: string; data: string[]; dataSaver: string[] } }>(`at-home/server/${id}`);
   const files = saver ? d.chapter.dataSaver : d.chapter.data;
   return files.map((f) => `${d.baseUrl}/${saver ? "data-saver" : "data"}/${d.chapter.hash}/${f}`);
