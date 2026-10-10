@@ -64,7 +64,7 @@ export async function getAnime(id: number): Promise<Anime> {
   return d.Media;
 }
 
-export const ANIME_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
+export const ANIME_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
 
 export const cleanText = (s: string | null) => (s ?? "").replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
 export const animeTitle = (a: Anime) => a.title.english || a.title.romaji;
