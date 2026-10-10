@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
-// Firebase web config is public by design (security comes from Firebase rules / authorized domains).
 const firebaseConfig = {
   apiKey: "AIzaSyCNxE8ucIaSavCgP8IZgdmNGFn8mQQit-c",
   authDomain: "site-otaku-f9a94.firebaseapp.com",
@@ -13,13 +13,20 @@ const firebaseConfig = {
   measurementId: "G-8MQ1XL0LHP",
 };
 
+function firebaseApp() {
+  return getApps().length ? getApp() : initializeApp(firebaseConfig);
+}
 let _auth: Auth | null = null;
+let _db: Firestore | null = null;
 
 /** Browser-only: call from effects / event handlers, never during SSR. */
 export function firebaseAuth(): Auth {
-  if (!_auth) {
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    _auth = getAuth(app);
-  }
+  if (!_auth) _auth = getAuth(firebaseApp());
   return _auth;
+}
+
+/** Firestore database client. */
+export function firebaseDb(): Firestore {
+  if (!_db) _db = getFirestore(firebaseApp());
+  return _db;
 }
