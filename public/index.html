@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#090b14">
-<title>Otaku-world · Catalogue AniList</title>
+<title>Otaku-world · Catalogue Anime</title>
 <style>
 :root{color-scheme:dark;--bg:#090b14;--panel:#131827;--muted:#aab2c5;--accent:#8b5cf6;--cyan:#38bdf8}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#1b2140 0,var(--bg) 55%);color:#f7f8ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
@@ -25,10 +25,15 @@ main{max-width:1100px;margin:auto;padding:22px 16px 50px}.hero{padding:24px 0 18
 <div class="notice">La vidéo ci-dessus est un extrait de démonstration. Les lecteurs externes dépendent de leur site d’origine et peuvent refuser l’intégration. Utilise uniquement des vidéos ou des lecteurs que tu as le droit de diffuser.</div>
 <h3>Lecture intégrée</h3><p class="small">Choisis un anime dans le catalogue, ouvre sa fiche, puis sélectionne l’épisode à regarder. La lecture reste sur cette page.</p><div id="selectedAnime" class="notice">Aucun anime sélectionné. Choisis une fiche dans le catalogue ci-dessous.</div><div class="episode-tools" id="episodeControls" hidden><label for="episodeNumber">Épisode</label><input id="episodeNumber" type="number" min="1" step="1" value="1"><button id="loadAutoembed" type="button">Regarder l’épisode</button><button id="editSlug" class="secondary" type="button">Corriger le titre</button></div><div class="episode-tools" id="slugControls" hidden><label for="autoembedSlug">Titre URL Autoembed</label><input id="autoembedSlug" type="text" placeholder="titre-anime-en-minuscules" style="flex:1;min-width:150px"><button id="saveSlug" type="button">Valider</button></div>
 <div class="embedrow"><input id="embedUrl" type="url" inputmode="url" placeholder="URL HTTPS officielle du lecteur" aria-label="URL officielle du lecteur intégré"><button id="loadEmbed" type="button">Charger le lecteur</button></div><p id="embedStatus" class="small" role="status">Aucun épisode Autoembed chargé. L’intégration dépend des règles et de la disponibilité de la source.</p><button id="resetPlayer" class="secondary" type="button">Revenir à la vidéo de test</button></section>
-<div class="section-head"><h2>Catalogue AniList</h2><span class="tag" id="count">Recherche</span></div>
-<p class="small">Les titres, affiches et synopsis sont récupérés depuis AniList. Recherche un anime, ouvre sa fiche, puis choisis le numéro de l’épisode avant de lancer la lecture.</p>
-<div class="search"><input id="animeSearch" type="search" placeholder="Ex. Boîte bleue / Blue Box…" aria-label="Rechercher dans AniList"><button id="animeSearchBtn" type="button">Rechercher</button></div>
-<p id="aniStatus" class="small" role="status">Chargement du catalogue…</p><section class="grid" id="aniCatalog"></section><div id="aniEmpty" class="empty">Aucun résultat pour cette recherche.</div>
+<div class="section-head"><h2>Explorer les animes</h2><span class="tag" id="count">Chargement</span></div>
+<p class="small">Un catalogue dynamique relié à AniList : tendances, populaires, mieux notés, nouveautés, recherche et filtres par genre.</p>
+<div class="search"><input id="animeSearch" type="search" placeholder="Rechercher un anime…" aria-label="Rechercher dans le catalogue"><button id="animeSearchBtn" type="button">Rechercher</button></div>
+<div class="episode-tools" style="margin:12px 0">
+<label for="catalogMode">Trier</label><select id="catalogMode" style="background:#131827;color:white;border:1px solid #ffffff20;border-radius:10px;padding:10px;font:inherit"><option value="TRENDING_DESC">Tendances</option><option value="POPULARITY_DESC">Les plus populaires</option><option value="SCORE_DESC">Mieux notés</option><option value="START_DATE_DESC">Nouveautés</option></select>
+<label for="genreFilter">Genre</label><select id="genreFilter" style="background:#131827;color:white;border:1px solid #ffffff20;border-radius:10px;padding:10px;font:inherit"><option value="">Tous les genres</option><option>Action</option><option>Adventure</option><option>Comedy</option><option>Drama</option><option>Fantasy</option><option>Romance</option><option>Sci-Fi</option><option>Slice of Life</option><option>Sports</option><option>Mystery</option><option>Supernatural</option><option>Horror</option></select>
+<button id="resetFilters" class="secondary" type="button">Réinitialiser</button></div>
+<p id="aniStatus" class="small" role="status">Chargement du catalogue…</p><section class="grid" id="aniCatalog"></section><div id="aniEmpty" class="empty">Aucun résultat pour ces critères.</div>
+<div style="display:flex;justify-content:center;margin:18px 0"><button id="loadMore" class="secondary" type="button">Charger plus d’animes</button></div>
 <footer class="footer">Otaku-world · Catalogue AniList avec lecteur intégré Autoembed.</footer>
 </main>
 <script>
@@ -42,7 +47,52 @@ document.getElementById("loadAutoembed").addEventListener("click",()=>loadAutoem
 function resetToDemo(){videoWrap.innerHTML='<video controls playsinline preload="metadata"><source src="'+demoSrc+'" type="video/mp4">Vidéo indisponible.</video>';embedStatus.textContent='Vidéo de démonstration prête.'}
 document.getElementById('resetPlayer').addEventListener('click',()=>{resetToDemo();document.getElementById('playingTitle').textContent='Lecteur de démonstration';document.getElementById('playingDescription').textContent='Pour regarder un épisode, utilise une URL de lecteur que tu es autorisé à intégrer.'});
 document.getElementById('loadEmbed').addEventListener('click',()=>{let u;try{u=new URL(embedUrl.value.trim())}catch(e){embedStatus.textContent='Adresse invalide. Colle une URL HTTPS complète.';return}if(u.protocol!=='https:'){embedStatus.textContent='Pour la sécurité, seules les URL HTTPS sont acceptées.';return}videoWrap.innerHTML='';const frame=document.createElement('iframe');frame.className='player';frame.title='Lecteur vidéo externe';frame.src=u.href;frame.loading='lazy';frame.referrerPolicy='strict-origin-when-cross-origin';frame.setAttribute('allow','fullscreen; autoplay; encrypted-media; picture-in-picture');frame.setAttribute('allowfullscreen','');videoWrap.appendChild(frame);embedStatus.textContent='Le lecteur s’affiche si la plateforme autorise l’intégration externe.'});
-async function searchAniList(){const q=animeSearch.value.trim();if(!q)return;aniStatus.textContent='Recherche en cours…';aniCatalog.innerHTML='';aniEmpty.style.display='none';try{const query='query ($search: String) { Page(page: 1, perPage: 12) { media(search: $search, type: ANIME, sort: SEARCH_MATCH) { id title { romaji english native } description(asHtml: false) coverImage { large } episodes siteUrl } } }';const res=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query,variables:{search:q}})});if(!res.ok)throw new Error('API error');const data=await res.json();const items=data.data.Page.media;count.textContent=items.length+' résultats';aniStatus.textContent=items.length?'Résultats fournis par AniList.':'Aucun anime trouvé.';aniEmpty.style.display=items.length?'none':'block';for(const anime of items){const card=document.createElement('article');card.className='card';const poster=document.createElement('div');poster.className='poster';const image=String(anime.coverImage?.large||'').replace(/["\\]/g,'');if(image)poster.style.backgroundImage='linear-gradient(0deg,#090b14d9,transparent),url("'+image+'")';poster.style.backgroundSize='cover';poster.style.backgroundPosition='center';const title=document.createElement('b');title.textContent=anime.title.english||anime.title.romaji||anime.title.native||'Anime';poster.appendChild(title);const meta=document.createElement('div');meta.className='meta';const h=document.createElement('h3');h.textContent=title.textContent;const synopsis=document.createElement('p');const plain=(anime.description||'Aucun synopsis disponible.').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&#039;/g,"'").replace(/&quot;/g,'"');synopsis.textContent=plain.length>250?plain.slice(0,247)+'…':plain;const pill=document.createElement('span');pill.className='pill';pill.textContent=anime.episodes?anime.episodes+' épisodes':'Épisodes inconnus';const actions=document.createElement("div");actions.style.marginTop="10px";const details=document.createElement("button");details.type="button";details.textContent="Ouvrir la fiche";details.addEventListener("click",()=>{const titleForSlug=anime.title.english||anime.title.romaji||anime.title.native||title.textContent;document.getElementById("playingTitle").textContent=title.textContent;document.getElementById("playingDescription").textContent="Synopsis : "+plain;document.getElementById("selectedAnime").textContent=title.textContent+" · "+(anime.episodes?anime.episodes+" épisodes annoncés":"nombre d’épisodes non renseigné")+". Choisis le numéro de l’épisode ci-dessous.";autoembedSlug.value=slugifyTitle(titleForSlug);episodeNumber.value=1;episodeNumber.max=anime.episodes||"";document.getElementById("episodeControls").hidden=false;document.getElementById("slugControls").hidden=true;document.getElementById("playerPanel").scrollIntoView({behavior:"smooth",block:"start"});});const info=document.createElement("a");info.href=anime.siteUrl;info.target="_blank";info.rel="noopener noreferrer";info.textContent="Fiche AniList";info.style.cssText="display:inline-block;margin:10px 0 0 10px;color:#7dd3fc;font-size:.85rem";actions.append(details,info);meta.append(h,synopsis,pill,actions);card.append(poster,meta);aniCatalog.appendChild(card)}}catch(e){aniStatus.textContent='Impossible de contacter AniList. Vérifie ta connexion puis réessaie.';aniEmpty.style.display='block'}}
+let catalogPage=1,catalogBusy=false,catalogHasMore=true,catalogSearch='',catalogSort='TRENDING_DESC',catalogGenre='';
+async function searchAniList(reset=true){
+ if(catalogBusy)return;
+ if(reset){catalogPage=1;catalogHasMore=true;aniCatalog.innerHTML='';aniEmpty.style.display='none'}
+ if(!catalogHasMore)return;
+ catalogBusy=true;aniStatus.textContent=reset?'Chargement du catalogue…':'Chargement de la suite…';
+ const q=animeSearch.value.trim();catalogSearch=q;catalogSort=document.getElementById('catalogMode').value;catalogGenre=document.getElementById('genreFilter').value;
+ try{
+  const query='query ($page: Int, $search: String, $sort: [MediaSort], $genre: String) { Page(page: $page, perPage: 24) { pageInfo { hasNextPage } media(search: $search, type: ANIME, sort: $sort, genre: $genre, isAdult: false) { id title { romaji english native } description(asHtml: false) coverImage { large } episodes averageScore genres seasonYear format status siteUrl } } }';
+  const variables={page:catalogPage,sort:[catalogSort],genre:catalogGenre||null};
+  if(q)variables.search=q;
+  const res=await fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query,variables})});
+  if(!res.ok)throw new Error('API error '+res.status);
+  const data=await res.json();if(data.errors)throw new Error(data.errors[0]?.message||'GraphQL error');
+  const page=data.data.Page,items=page.media;catalogHasMore=page.pageInfo.hasNextPage;
+  count.textContent=(aniCatalog.children.length+items.length)+'+ titres';
+  aniStatus.textContent=items.length?'Catalogue AniList · '+(q?'résultats de recherche':catalogGenre||catalogSort.replace('_DESC','').toLowerCase())+'.':'Aucun résultat.';
+  aniEmpty.style.display=(!items.length&&catalogPage===1)?'block':'none';
+  for(const anime of items){
+   const card=document.createElement('article');card.className='card';
+   const poster=document.createElement('div');poster.className='poster';const image=String(anime.coverImage?.large||'').replace(/["\\]/g,'');
+   if(image)poster.style.backgroundImage='linear-gradient(0deg,#090b14e8,transparent 75%),url("'+image+'")';
+   poster.style.backgroundSize='cover';poster.style.backgroundPosition='center';
+   const title=document.createElement('b');title.textContent=anime.title.english||anime.title.romaji||anime.title.native||'Anime';poster.appendChild(title);
+   const meta=document.createElement('div');meta.className='meta';const h=document.createElement('h3');h.textContent=title.textContent;
+   const plain=(anime.description||'Synopsis non disponible.').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&#039;/g,"'").replace(/&quot;/g,'"').trim();
+   const synopsis=document.createElement('p');synopsis.textContent=plain.length>170?plain.slice(0,167)+'…':plain;
+   const pill=document.createElement('span');pill.className='pill';pill.textContent=[anime.format||'Anime',anime.episodes?anime.episodes+' ép.':'épisodes inconnus',anime.averageScore?'★ '+(anime.averageScore/10).toFixed(1):''].filter(Boolean).join(' · ');
+   const genreLine=document.createElement('p');genreLine.className='small';genreLine.style.marginTop='7px';genreLine.textContent=(anime.genres||[]).slice(0,3).join(' · ');
+   const actions=document.createElement('div');actions.style.marginTop='10px';
+   const details=document.createElement('button');details.type='button';details.textContent='Ouvrir la fiche';
+   details.addEventListener('click',()=>{const titleForSlug=anime.title.english||anime.title.romaji||anime.title.native||title.textContent;document.getElementById('playingTitle').textContent=title.textContent;document.getElementById('playingDescription').textContent='Synopsis : '+plain;document.getElementById('selectedAnime').textContent=title.textContent+' · '+(anime.episodes?anime.episodes+' épisodes annoncés':'nombre d’épisodes non renseigné')+'. Choisis le numéro de l’épisode ci-dessous.';autoembedSlug.value=slugifyTitle(titleForSlug);episodeNumber.value=1;episodeNumber.max=anime.episodes||'';document.getElementById('episodeControls').hidden=false;document.getElementById('slugControls').hidden=true;document.getElementById('playerPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+   const info=document.createElement('a');info.href=anime.siteUrl;info.target='_blank';info.rel='noopener noreferrer';info.textContent='Fiche AniList';info.style.cssText='display:inline-block;margin:10px 0 0 10px;color:#7dd3fc;font-size:.85rem';
+   actions.append(details,info);meta.append(h,synopsis,pill,genreLine,actions);card.append(poster,meta);aniCatalog.appendChild(card);
+  }
+  catalogPage++;document.getElementById('loadMore').hidden=!catalogHasMore;
+ }catch(e){aniStatus.textContent='Impossible de charger le catalogue. Vérifie ta connexion puis réessaie.';if(catalogPage===1)aniEmpty.style.display='block';}
+ finally{catalogBusy=false}
+}
+document.getElementById('animeSearchBtn').addEventListener('click',()=>searchAniList(true));
+animeSearch.addEventListener('keydown',e=>{if(e.key==='Enter')searchAniList(true)});
+document.getElementById('catalogMode').addEventListener('change',()=>searchAniList(true));
+document.getElementById('genreFilter').addEventListener('change',()=>searchAniList(true));
+document.getElementById('resetFilters').addEventListener('click',()=>{animeSearch.value='';document.getElementById('catalogMode').value='TRENDING_DESC';document.getElementById('genreFilter').value='';searchAniList(true)});
+document.getElementById('loadMore').addEventListener('click',()=>searchAniList(false));
+animeSearch.value='';searchAniList(true);
 document.getElementById('animeSearchBtn').addEventListener('click',searchAniList);animeSearch.addEventListener('keydown',e=>{if(e.key==='Enter')searchAniList()});animeSearch.value='Blue Box';searchAniList();
 </script>
 </body></html>
