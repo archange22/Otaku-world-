@@ -83,7 +83,14 @@ async function searchAniList(reset=true){
    actions.append(details,info);meta.append(h,synopsis,pill,genreLine,actions);card.append(poster,meta);aniCatalog.appendChild(card);
   }
   catalogPage++;document.getElementById('loadMore').hidden=!catalogHasMore;
- }catch(e){aniStatus.textContent='Impossible de charger le catalogue. Vérifie ta connexion puis réessaie.';if(catalogPage===1)aniEmpty.style.display='block';}
+ }catch(e){
+  console.error('AniList catalog error:',e);
+  aniStatus.textContent='Erreur catalogue : '+(e&&e.message?e.message:'connexion impossible')+'. Essaie de recharger la page.';
+  if(catalogPage===1){
+   aniEmpty.style.display='block';
+   aniEmpty.textContent='AniList ne répond pas pour le moment. Vérifie Internet et appuie sur Rechercher. Si le problème persiste, le message ci-dessus aide à identifier la cause.';
+  }
+ }
  finally{catalogBusy=false}
 }
 document.getElementById('animeSearchBtn').addEventListener('click',()=>searchAniList(true));
